@@ -1,0 +1,125 @@
+//@version=5
+import DinGrogu/backtest/1 as backtest
+strategy(title='UT Bot v5 backtest strategy', overlay=true)
+
+// Inputs
+atrSensitivity = input(2, title='Key Value. \'This changes the sensitivity\'') 
+atrPeriod = input(3, title='ATR Period')
+isHeikin = input(false, title='Signals from Heikin Ashi Candles')
+
+
+calculateATRTrailingStop(src, atrSensitivity, atrPeriod) =>
+    xATR = ta.atr(atrPeriod)
+    nLoss = atrSensitivity * xATR
+
+    xATRTrailingStop = 0.0
+    iff_1 = src > nz(xATRTrailingStop[1], 0) ? src - nLoss : src + nLoss
+    iff_2 = src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), src + nLoss) : iff_1
+    xATRTrailingStop := src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), src - nLoss) : iff_2
+    xATRTrailingStop
+
+
+calculateSignals(src, atrSensitivity, atrPeriod) =>
+    xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
+
+    ema = ta.ema(src, 1)
+    above = ta.crossover(ema, xATRTrailingStop)
+    below = ta.crossover(xATRTrailingStop, ema)
+    buy = src > xATRTrailingStop and above
+    sell = src < xATRTrailingStop and below
+    [buy, sell]
+
+
+src = isHeikin ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead=barmerge.lookahead_off) : close
+
+dateStart = timestamp(2000, 1, 1, 00, 00)
+dateEnd = timestamp(2024, 4, 1, 23, 59)
+initial_capital = 1000.00
+
+var float bestPnl = na
+
+[buy_1, sell_1] = calculateSignals(src, 1, 1)
+[buy_2, sell_2] = calculateSignals(src, 1, 2)
+[buy_3, sell_3] = calculateSignals(src, 2, 1)
+[buy_4, sell_4] = calculateSignals(src, 2, 2)
+[buy_5, sell_5] = calculateSignals(src, 2, 3)
+
+var best_value = 0.0
+var best_pnl = 0.0
+
+var results_list = array.new_string(6)
+
+pnl_001 = backtest.profit(dateStart, dateEnd, buy_1, sell_1)
+pnl_002 = backtest.profit(dateStart, dateEnd, buy_2, sell_2)
+pnl_003 = backtest.profit(dateStart, dateEnd, buy_3, sell_3)
+pnl_004 = backtest.profit(dateStart, dateEnd, buy_4, sell_4)
+pnl_005 = backtest.profit(dateStart, dateEnd, buy_5, sell_5)
+
+plot(pnl_001, title='0.1', color=backtest.color(001))
+plot(pnl_002, title='0.2', color=backtest.color(002))
+plot(pnl_003, title='0.3', color=backtest.color(003))
+plot(pnl_004, title='0.4', color=backtest.color(004))
+plot(pnl_005, title='0.5', color=backtest.color(005))
+
+if (ta.change(pnl_001))
+	array.set(results_list, 0, str.tostring(pnl_001) + '|1')
+
+if (ta.change(pnl_002))
+	array.set(results_list, 1, str.tostring(pnl_002) + '|2')
+
+if (ta.change(pnl_003))
+	array.set(results_list, 2, str.tostring(pnl_003) + '|3')
+
+if (ta.change(pnl_004))
+	array.set(results_list, 3, str.tostring(pnl_004) + '|4')
+
+if (ta.change(pnl_005))
+	array.set(results_list, 4, str.tostring(pnl_005) + '|5')
+
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+// AUTO GENERATED CODE [END]
+// #################################################################
+
+// #################################################################
+// # SET THE VALUES CREATED BY THE CODE ABOVE
+// #################################################################
+
+// At each new bar reset the best pnl and value.
+if (barstate.islast)
+    best_pnl := 0
+    best_value := 0
+
+// Then run the results array again afterwards to set the new best_pnl and value.
+if (array.size(results_list) > 0)
+    for i = 0 to array.size(results_list) - 1 by 1
+        result_string = array.get(results_list, i)
+        if (str.contains(result_string, '|'))
+            result_values = str.split(result_string, '|')
+            result = str.tonumber(array.first(result_values))
+            if (not na (result) and result > best_pnl)
+                best_value := str.tonumber(array.last(result_values))
+                best_pnl := result
+
+plot(best_value, title='🔌 Value', color=color.yellow)
+plot(best_pnl, title='🔌 Profit (%)', color=color.green)
+
+// log.info(str.tostring(best_pnl) + '|' + str.tostring(best_value))
+
+
+// xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
+// [buy, sell] = calculateSignals(src, xATRTrailingStop)
+
+// plot(xATRTrailingStop, color = src>xATRTrailingStop ? color.green : color.red)
+
+// Enter and exit trades
+// strategy.entry("Buy", strategy.long, when=buy)
+// strategy.close("Buy", when=sell)
+
+// Integration of backtest library
+// dateStart = timestamp(2000, 1, 1, 00, 00)
+// dateEnd = timestamp(2024, 4, 1, 23, 59)
+// initial_capital = 1000.00
+
+
+// [profit_and_loss, open_balance, winrate, entries, exits, wins, losses] = backtest.results(dateStart, dateEnd, buy, sell)
+// backtest.table(initial_capital, profit_and_loss, open_balance, winrate, entries, exits, wins, losses)

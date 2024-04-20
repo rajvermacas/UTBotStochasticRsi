@@ -1,0 +1,67 @@
+//@version=5
+indicator(title='Stock Growth Calculation', overlay=true, shorttitle="SGC")
+
+// Inputs for backtest period
+backtestDateStart = input.time(title="Backtest Start Date", defval=timestamp("2000-01-01"))
+backtestDateEnd = input.time(title="Backtest End Date", defval=timestamp("2050-01-01"))
+
+
+f_backtest_table_margin(int margin) =>
+    margin_string = ''
+    for i = 1 to margin
+        margin_string := margin_string + ' '
+    margin_string
+
+f_backtest_table(priceGrowth, _table_position='RIGHT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
+    var green = #26A69A
+    var red = #FF5252
+
+    var table_width = 0
+    var table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
+    var table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
+
+    var table_titles = _table_position == 'LEFT' ? 1 : 0
+    var table_values = _table_position == 'LEFT' ? 2 : 1
+    var table_offset = _table_position == 'LEFT' ? 0 : 2
+
+    backtesting_table = table.new(table_position, columns=3, rows=7, border_width=3)
+
+    table.cell(backtesting_table, table_titles, 0, text='    Stock Growth    ', bgcolor=_table_title_cell_color, text_color=_table_text_color,  text_halign=text.align_left, text_size=size.small)
+
+    table.cell(backtesting_table, table_values, 0, text='    ' + str.tostring(priceGrowth, "#.##") + ' %' + '   ', width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+
+    table.cell(backtesting_table, table_offset, 0, table_margin_right, bgcolor=color.new(color.white, 100), text_color=color.white, text_size=size.small)
+
+calculate_price_growth(backtestDateStart, backtestDateEnd) =>
+    var float firstPrice = na
+    var float lastPrice = na
+    var float priceGrowth = na
+
+    // Check if current bar is within the backtest period
+    if (time >= backtestDateStart and time <= backtestDateEnd)
+        // Update firstPrice at the start of the period
+        if na(firstPrice)
+            firstPrice := close
+        // Always update lastPrice to the current close within the period
+        lastPrice := close
+
+    // Calculate growth only after the period has ended
+    if (not na(firstPrice) and not na(lastPrice))
+        priceGrowth := (lastPrice - firstPrice) / firstPrice * 100
+    
+    log.info("priceGrowth: "+str.tostring(priceGrowth))
+    log.info("firstPrice: "+str.tostring(firstPrice))
+    log.info("lastPrice: "+str.tostring(lastPrice))
+    log.info("time: "+str.tostring(time))
+    log.info("backtestDateStart: "+str.tostring(backtestDateStart))
+    log.info("backtestDateEnd: "+str.tostring(backtestDateEnd))
+    
+    priceGrowth
+
+
+priceGrowth = calculate_price_growth(backtestDateStart, backtestDateEnd)
+
+// Use label.new to display dynamic text
+if (bar_index == last_bar_index)
+    // label.new(x=bar_index, y=close * 1.01, text="Growth: " + str.tostring(priceGrowth, "#.##") + "%", style=label.style_label_down, color=color.green, textcolor=color.white, size=size.normal)
+    f_backtest_table(priceGrowth)
