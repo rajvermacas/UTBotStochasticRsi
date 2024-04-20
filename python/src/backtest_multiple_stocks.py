@@ -64,8 +64,8 @@ if __name__=="__main__":
     init_log()
     backtest_start_date, backtest_end_date = get_backtest_start_end_date()
 
-    ticker_names = ["DIXON.NS", "^NSEI", "SAKUMA.NS"]
-    # ticker_names = get_nifty_500_stock_names()
+    # ticker_names = ["DIXON.NS", "^NSEI", "SAKUMA.NS"]
+    ticker_names = get_nifty_500_stock_names()
     df_profit = pd.DataFrame(columns=['Stock', 'Stock Growth', 'Profit'])
 
     page_size = 50
