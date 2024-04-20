@@ -45,6 +45,13 @@ def get_nifty_500_stock_names():
     df['Symbol'] = df['Symbol']+".NS"
     return df.Symbol.to_list()
 
+def get_favourable_stock_names():
+    csv_path = os.path.join(os.getenv("INPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\input"), "favourable_stocks.csv")
+    df = pd.read_csv(csv_path)
+    df['Stock'] = df['Stock']+".NS"
+    return df.Stock.to_list()
+
+
 if __name__=="__main__":
     ticker_names = get_nifty_500_stock_names()
     print(ticker_names)
