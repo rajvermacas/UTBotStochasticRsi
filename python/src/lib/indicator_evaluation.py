@@ -149,7 +149,7 @@ def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=
     
     return transactions, (balance-initial_captital)/initial_captital * 100
 
-def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures, df_profit):
+def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures):
     best_transactions_stat = None
 
     for future in concurrent.futures.as_completed(futures):
@@ -166,12 +166,4 @@ def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures
     else:
         best_transactions_stat['Profit/StockGrowth'] = round(best_transactions_stat['Profit']/stock_growth, 2)
 
-    df_profit = pd.concat(
-                    [
-                        df_profit, 
-                        pd.DataFrame(best_transactions_stat, index=[0])
-                    ], 
-                    ignore_index=True
-                )
-    
-    return df_profit
+    return best_transactions_stat

@@ -13,7 +13,11 @@ def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
     ema_rsi = ta.trend.EMAIndicator(rsi, ema_period).ema_indicator()
 
     rsi_buy_column = 'rsiBuySignal'
-    data[rsi_buy_column] = (rsi >= 50) & (rsi > ema_rsi) & (ema_rsi > 40)
+    # rsi is above 50
+    # and rsi is above ema_rsi 
+    # and ema_rsi is above 40 
+    # and close is above ATR
+    data[rsi_buy_column] = (rsi >= 50) & (rsi > ema_rsi) & (ema_rsi > 40) & (data['Close'] >= data['ATR_TS'])
     return rsi_buy_column
 
 def calculate_stochastic_buy_signal(data):
@@ -24,8 +28,10 @@ def calculate_stochastic_buy_signal(data):
     data['%K'] = k
     data['%D'] = d
     
-    # stochasticBuySignal = %K > %D and %D < 60
-    stochasticBuySignal = (data['%K'] > data['%D']) & (data['%D'] < 60)
+    # stochasticBuySignal = %K > %D 
+    # and %D < 60
+    # and close is above ATR
+    stochasticBuySignal = (data['%K'] > data['%D']) & (data['%D'] < 60) & (data['Close'] >= data['ATR_TS'])
 
     stochastic_buy_column = 'stochasticBuySignal'
     data[stochastic_buy_column] = stochasticBuySignal
@@ -67,23 +73,19 @@ def calculate_multiple_buy_sell_signals(ticker_data):
     atr_buy_column, atr_sell_column = calculate_atr_buy_sell_signal(ticker_data)
     rsi_buy_column = calculate_rsi_buy_signal(ticker_data)
     stochastic_buy_column = calculate_stochastic_buy_signal(ticker_data)
-    close_above_atr_buy_column = calculate_close_above_atr_signal(ticker_data)
     
     return [
         atr_buy_column,
         rsi_buy_column,
         stochastic_buy_column,
-        close_above_atr_buy_column
     ], atr_sell_column
 
 def get_buy_columns_combinations(buy_columns):
     all_combinations = []
-    close_above_atr_buy_column = 'closeAboveATRBuySignal'
 
     for r in range(1, len(buy_columns) + 1):
         for combo in combinations(buy_columns, r):
             combo = set(combo)
-            combo.add(close_above_atr_buy_column)
             all_combinations.append(combo)
 
     return all_combinations
