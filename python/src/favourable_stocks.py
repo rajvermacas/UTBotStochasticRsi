@@ -7,7 +7,7 @@ load_dotenv()
 
 
 if __name__=="__main__":
-    read_csv_path = os.path.join(os.getenv("INPUT_DIR"), "stock_performanc500.csv")
+    read_csv_path = os.path.join(os.getenv("INPUT_DIR"), "stock_performance500.csv")
     write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), "favourable_stocks.csv")
     
     df = pd.read_csv(read_csv_path)    
@@ -16,3 +16,5 @@ if __name__=="__main__":
     filtered_df.loc[:, 'Stock'] = filtered_df['Stock'].str.replace(r'\.NS$', '', regex=True)
     filtered_df = filtered_df.sort_values(by='Winrate', ascending=False)
     filtered_df.to_csv(write_csv_path, index=False)
+
+    print(f"Favourable stocks csv generated: {write_csv_path}")

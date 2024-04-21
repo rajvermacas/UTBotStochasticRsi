@@ -18,6 +18,18 @@ def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
     # and ema_rsi is above 40 
     # and close is above ATR
     data[rsi_buy_column] = (rsi >= 50) & (rsi > ema_rsi) & (ema_rsi > 40) & (data['Close'] >= data['ATR_TS'])
+
+    # Generate buy Signal only at the first buy signal after a sell signal
+    sell_column = 'atrSellSignal'
+    buy_signal_generated = False
+    for i in range(len(data)):
+        if data[sell_column][i] and buy_signal_generated:
+            buy_signal_generated = False  # Reset buy signal flag after a sell signal
+        if not buy_signal_generated and data[rsi_buy_column][i]:
+            buy_signal_generated = True  # Set buy signal flag
+        else:
+            data[rsi_buy_column].iloc[i] = False  # Do not generate buy signal if already generated
+    
     return rsi_buy_column
 
 def calculate_stochastic_buy_signal(data):
@@ -35,6 +47,18 @@ def calculate_stochastic_buy_signal(data):
 
     stochastic_buy_column = 'stochasticBuySignal'
     data[stochastic_buy_column] = stochasticBuySignal
+
+    # Generate buy Signal only at the first buy signal after a sell signal
+    sell_column = 'atrSellSignal'
+    buy_signal_generated = False
+    for i in range(len(data)):
+        if data[sell_column][i] and buy_signal_generated:
+            buy_signal_generated = False  # Reset buy signal flag after a sell signal
+        if not buy_signal_generated and data[stochastic_buy_column][i]:
+            buy_signal_generated = True  # Set buy signal flag
+        else:
+            data[stochastic_buy_column].iloc[i] = False  # Do not generate buy signal if already generated
+
     return stochastic_buy_column
 
 def calculate_atr_buy_sell_signal(data):
