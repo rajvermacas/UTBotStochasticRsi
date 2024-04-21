@@ -28,7 +28,7 @@ def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
         if not buy_signal_generated and data[rsi_buy_column][i]:
             buy_signal_generated = True  # Set buy signal flag
         else:
-            data[rsi_buy_column].iloc[i] = False  # Do not generate buy signal if already generated
+            data.loc[data.index[i], rsi_buy_column] = False  # Do not generate buy signal if already generated
     
     return rsi_buy_column
 
@@ -57,7 +57,7 @@ def calculate_stochastic_buy_signal(data):
         if not buy_signal_generated and data[stochastic_buy_column][i]:
             buy_signal_generated = True  # Set buy signal flag
         else:
-            data[stochastic_buy_column].iloc[i] = False  # Do not generate buy signal if already generated
+            data.loc[data.index[i], stochastic_buy_column] = False  # Do not generate buy signal if already generated
 
     return stochastic_buy_column
 

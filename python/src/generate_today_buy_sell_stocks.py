@@ -27,12 +27,15 @@ def init_log():
     logging.basicConfig(filename=log_file_name, level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     builtins.logging = logging
 
-def get_backtest_start_end_date():
+def get_backtest_start_end_date():    
     current_date = datetime.now()
     one_month_ago = current_date - timedelta(days=365*4)
 
     backtest_start_date = one_month_ago.strftime("%Y-%m-%d")
     backtest_end_date = current_date.strftime("%Y-%m-%d")
+
+    # backtest_start_date = "2023-01-01"
+    # backtest_end_date = "2023-11-21"
     return backtest_start_date, backtest_end_date
 
 def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations):
