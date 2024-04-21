@@ -39,8 +39,11 @@ def get_tickers_data(start_date, end_date, ticker_names):
 # Step 1: Get the list of Nifty 500 stocks
 # You can use nsepy library to fetch the list
 
-def get_nifty_500_stock_names():
-    csv_path = os.path.join(os.getenv("INPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\input"), "nifty500.csv")
+def get_nifty_stock_names(filename=None):
+    if filename is None:
+        filename = "nifty500.csv"
+
+    csv_path = os.path.join(os.getenv("INPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\input"), filename)
     df = pd.read_csv(csv_path)
     df['Symbol'] = df['Symbol']+".NS"
     return df.Symbol.to_list()
@@ -53,5 +56,5 @@ def get_favourable_stock_names():
 
 
 if __name__=="__main__":
-    ticker_names = get_nifty_500_stock_names()
+    ticker_names = get_nifty_stock_names()
     print(ticker_names)

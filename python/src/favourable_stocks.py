@@ -7,7 +7,7 @@ load_dotenv()
 
 
 if __name__=="__main__":
-    read_csv_path = os.path.join(os.getenv("INPUT_DIR"), "stock_performance500.csv")
+    read_csv_path = os.path.join(os.getenv("INPUT_DIR"), "stock_performance.csv")
     write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), "favourable_stocks.csv")
     
     df = pd.read_csv(read_csv_path)    

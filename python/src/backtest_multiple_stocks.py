@@ -10,7 +10,7 @@ import builtins
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from lib.data_fetcher import get_tickers_data, get_nifty_500_stock_names
+from lib.data_fetcher import get_tickers_data, get_nifty_stock_names
 from lib.indicator_evaluation import get_transactions_summary, calculate_stock_growth, calculate_most_profitable_buy_combination
 from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
@@ -28,7 +28,7 @@ def init_log():
     builtins.logging = logging
 
 def get_backtest_start_end_date():
-    backtest_start_date = "2020-01-01"
+    backtest_start_date = "2017-01-01"
     backtest_end_date = "2050-01-01"
     return backtest_start_date, backtest_end_date
 
@@ -96,7 +96,7 @@ if __name__=="__main__":
     backtest_start_date, backtest_end_date = get_backtest_start_end_date()
 
     # ticker_names = ["DIXON.NS", "^NSEI", "SAKUMA.NS"]
-    ticker_names = get_nifty_500_stock_names()
+    ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
     df_profit = pd.DataFrame(columns=['Stock', 'Stock Growth', 'Profit'])
 
     page_size = 50
