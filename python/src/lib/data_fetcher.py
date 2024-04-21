@@ -41,7 +41,7 @@ def get_tickers_data(start_date, end_date, ticker_names):
 
 def get_nifty_stock_names(filename=None):
     if filename is None:
-        filename = "nifty500.csv"
+        filename = "nifty500_stock_names.csv"
 
     csv_path = os.path.join(os.getenv("INPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\input"), filename)
     df = pd.read_csv(csv_path)
