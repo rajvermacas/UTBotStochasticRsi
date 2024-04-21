@@ -55,8 +55,6 @@ if __name__=="__main__":
     # Load environment variables from .env file
     load_dotenv()
 
-    # send_email_with_attachments("Test Subject", "Test Message", "mrinalrajprom1@gmail.com", 
-                                # [])
     send_email_with_attachments(
         "UTBotStochasticRSI Buy/Sell Stocks", 
         """
