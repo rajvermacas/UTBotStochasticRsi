@@ -1,3 +1,6 @@
+"""
+Prerequisites: input/nifty_stock_names.csv
+"""
 # sourcery skip: for-append-to-extend, list-comprehension
 import sys
 import traceback

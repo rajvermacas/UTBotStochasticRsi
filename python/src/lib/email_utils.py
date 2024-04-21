@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 def send_email_with_attachments(subject, message, recipient_emails, attachment_paths):
     sender_email = os.getenv("SENDER_EMAIL")
-    sender_password = os.getenv("SENDER_PASSWORD")
+    sender_password = os.getenv("SENDER_APP_PASSWORD")
 
     # Setup the MIME
     msg = MIMEMultipart()
@@ -57,7 +57,23 @@ if __name__=="__main__":
 
     # send_email_with_attachments("Test Subject", "Test Message", "mrinalrajprom1@gmail.com", 
                                 # [])
-    send_email_with_attachments("UTBotStochasticRSI Buy/Sell Stocks", "Please find 2 csv files attached",
-                                ["mrinalrajubereats1@gmail.com"], 
-                                [r"c:\Users\mrina\cursor-projects\UTBotStochasticRsi\python\output\2024-04-02_buy_stocks.csv", r"c:\Users\mrina\cursor-projects\UTBotStochasticRsi\python\output\2024-04-02_exit_stocks.csv"])
+    send_email_with_attachments(
+        "UTBotStochasticRSI Buy/Sell Stocks", 
+        """
+        Hi Trader,
+        
+        - Please find 2 csv files attached: one for buy stocks and the other for exit stocks.
+        - The stock selection is based on backtesting from Jan 2017 to Apr 2024 across all the nifty 1966 stocks.
+        - The data in the attached csv files' columns is based on the last 4 years of backtesting.
+        - Before taking a trade, please cross-check with UTBotStochasticRSI at https://in.tradingview.com/script/pyOJZFzk-UT-Bot-Stochastic-RSI/
+        
+        Thank you
+        UTBotStochasticRSI Team
+        """,
+        ["email_address"], # change recipient emails here
+        [
+            r"c:\Users\mrina\cursor-projects\UTBotStochasticRsi\python\output\2024-04-02_buy_stocks.csv", 
+            r"c:\Users\mrina\cursor-projects\UTBotStochasticRsi\python\output\2024-04-02_exit_stocks.csv"
+        ]
+    )
 

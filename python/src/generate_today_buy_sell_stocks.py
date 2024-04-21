@@ -1,3 +1,6 @@
+"""
+Prerequisites: input/favourable_stocks.csv
+"""
 # sourcery skip: for-append-to-extend, list-comprehension
 import sys
 import traceback
@@ -15,6 +18,7 @@ from lib.data_fetcher import get_tickers_data, get_favourable_stock_names
 from lib.indicator_evaluation import get_transactions_summary, calculate_stock_growth, calculate_most_profitable_buy_combination
 from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
+from lib.email_utils import send_email_with_attachments
 
 from dotenv import load_dotenv
 import os
@@ -28,15 +32,18 @@ def init_log():
     builtins.logging = logging
 
 def get_backtest_start_end_date():    
-    current_date = datetime.now()
-    one_month_ago = current_date - timedelta(days=365*4)
+    tomorrow_date = datetime.now() + timedelta(days=1)
+    start_date = tomorrow_date - timedelta(days=365*4)
 
-    backtest_start_date = one_month_ago.strftime("%Y-%m-%d")
-    backtest_end_date = current_date.strftime("%Y-%m-%d")
+    backtest_start_date = start_date.strftime("%Y-%m-%d")
+    backtest_end_date = tomorrow_date.strftime("%Y-%m-%d")
 
     # backtest_start_date = "2024-01-01"
     # backtest_end_date = "2024-04-03" # For backtesting add 1 day + the actual date
     return backtest_start_date, backtest_end_date
+
+def today_date():
+    return datetime.now().strftime("%Y-%m-%d")
 
 def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations):
     ticker_data = ticker_data.copy(deep=True)
@@ -61,8 +68,8 @@ def pre_populate_indicators(ticker_df):
     atr_column = calculate_atr_trailing_stop(ticker_df)
 
 def create_csv_today_buy_stocks(df_buy):
-    _, today_date = get_backtest_start_end_date()
-    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{today_date}_buy_stocks.csv")
+    t_date = today_date()
+    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{t_date}_buy_stocks.csv")
     
     cols = df_buy.columns.tolist()
     cols.insert(0, cols.pop(cols.index('Date')))  # Move the 'Date' column to the first position
@@ -72,10 +79,11 @@ def create_csv_today_buy_stocks(df_buy):
 
     df_buy.to_csv(write_csv_path, index=False)
     print(f"Today buy stocks csv created: {write_csv_path}")
+    return write_csv_path
 
 def create_csv_today_exit_stocks(df_exit):
-    _, today_date = get_backtest_start_end_date()
-    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{today_date}_exit_stocks.csv")
+    t_date = today_date()
+    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{t_date}_exit_stocks.csv")
     
     cols = df_exit.columns.tolist()
     cols.insert(0, cols.pop(cols.index('Date')))  # Move the 'Date' column to the first position
@@ -85,6 +93,7 @@ def create_csv_today_exit_stocks(df_exit):
 
     df_exit.to_csv(write_csv_path, index=False)
     print(f"Today exit stocks csv created: {write_csv_path}")
+    return write_csv_path
 
 def calculate_today_buy_stocks(best_transactions_stat, ticker_data):
     ticker_data = ticker_data.tail(1)    
@@ -159,8 +168,25 @@ if __name__=="__main__":
                 print(f"Error occured in main thread. ticker={ticker_name}. error={e}")
                 builtins.logging.exception(f"Error occured in main thread. ticker={ticker_name}. error={e}")
         
-    create_csv_today_buy_stocks(df_buy)
-    create_csv_today_exit_stocks(df_exit) 
+    buy_csv_path = create_csv_today_buy_stocks(df_buy)
+    exit_csv_path = create_csv_today_exit_stocks(df_exit) 
+
+    recipient_emails = os.getenv("RECIPIENT_EMAILS").split(",")
+    send_email_with_attachments(
+        "UTBotStochasticRSI Buy/Sell Stocks", 
+        """
+        Hi Trader,
+        
+        - Please find 2 csv files attached: one for buy stocks and the other for exit stocks.
+        - The stock selection is based on backtesting from Jan 2017 to Apr 2024 across all the nifty 1966 stocks.
+        - The data in the attached csv files' columns is based on the last 4 years of backtesting.
+        - Before taking a trade, please cross-check with UTBotStochasticRSI at https://in.tradingview.com/script/pyOJZFzk-UT-Bot-Stochastic-RSI/
+        
+        Thank you
+        UTBotStochasticRSI Team
+        """,
+        recipient_emails, 
+        [buy_csv_path, exit_csv_path]
+    )
+
     print("Time taken: ", time.time() - _start_time)
-
-
