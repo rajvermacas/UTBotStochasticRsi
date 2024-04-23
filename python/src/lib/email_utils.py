@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import os
+import platform
 from dotenv import load_dotenv
 
 
@@ -27,7 +28,18 @@ def send_email_with_attachments(subject, message, recipient_emails, attachment_p
             part.set_payload(file.read())
         encoders.encode_base64(part)
 
-        filename = attachment_path.split('\\')[-1]
+        if platform.system() == 'Windows':
+            print(f'This is a Windows system hence splitting attachment path with \\ attachment_path={attachment_path}')
+            filename = attachment_path.split('\\')[-1]
+
+        elif platform.system() == 'Linux':
+            print(f'This is a Linux system hence splitting attachment path with / attachment_path={attachment_path}')
+            filename = attachment_path.split('/')[-1]
+        
+        else:
+            print('The system is neither Windows nor Linux')
+            
+
         part.add_header('Content-Disposition', f'attachment; filename="{filename}"')
         msg.attach(part)
 
@@ -49,6 +61,21 @@ def _send_email(sender_email, sender_password, msg, recipient_emails):
     server.sendmail(sender_email, recipient_emails, text)
     server.quit()
     print(f"Email with attachments sent successfully to {recipient_emails}")
+
+def get_recipient_emails():
+    mails = os.getenv("RECIPIENT_EMAILS").split(",")
+    input_dir = os.getenv("INPUT_DIR")
+    recipient_emails_file = os.path.join(input_dir, "recipient_emails.txt")
+
+    try:
+        with open(recipient_emails_file, "r") as file:
+            additional_emails = [email.strip() for email in file.readlines()]
+    except FileNotFoundError:
+        print(f"recipient_emails_file not found: {recipient_emails_file}")
+
+    mails.extend(additional_emails)
+
+    return mails
 
 
 if __name__=="__main__":

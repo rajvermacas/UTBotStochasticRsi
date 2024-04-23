@@ -2,8 +2,6 @@
 Prerequisites: input/favourable_stocks.csv
 """
 # sourcery skip: for-append-to-extend, list-comprehension
-import sys
-import traceback
 import pandas as pd
 import concurrent.futures
 import time
@@ -18,7 +16,7 @@ from lib.data_fetcher import get_tickers_data, get_favourable_stock_names
 from lib.indicator_evaluation import get_transactions_summary, calculate_stock_growth, calculate_most_profitable_buy_combination
 from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
-from lib.email_utils import send_email_with_attachments
+from lib.email_utils import send_email_with_attachments, get_recipient_emails
 
 from dotenv import load_dotenv
 import os
@@ -69,13 +67,14 @@ def pre_populate_indicators(ticker_df):
 
 def create_csv_today_buy_stocks(df_buy):
     t_date = today_date()
-    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{t_date}_buy_stocks.csv")
+    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"Buy_{t_date}.csv")
     
     cols = df_buy.columns.tolist()
     cols.insert(0, cols.pop(cols.index('Date')))  # Move the 'Date' column to the first position
     df_buy = df_buy[cols]
 
     df_buy.loc[:, 'Stock'] = df_buy['Stock'].str.replace(r'\.NS$', '', regex=True)
+    df_buy = df_buy.sort_values(by='Winrate', ascending=False)
 
     df_buy.to_csv(write_csv_path, index=False)
     print(f"Today buy stocks csv created: {write_csv_path}")
@@ -83,13 +82,14 @@ def create_csv_today_buy_stocks(df_buy):
 
 def create_csv_today_exit_stocks(df_exit):
     t_date = today_date()
-    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{t_date}_exit_stocks.csv")
+    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"Exit_{t_date}.csv")
     
     cols = df_exit.columns.tolist()
     cols.insert(0, cols.pop(cols.index('Date')))  # Move the 'Date' column to the first position
     df_exit = df_exit[cols]
 
     df_exit.loc[:, 'Stock'] = df_exit['Stock'].str.replace(r'\.NS$', '', regex=True)
+    df_exit = df_exit.sort_values(by='Winrate', ascending=False)
 
     df_exit.to_csv(write_csv_path, index=False)
     print(f"Today exit stocks csv created: {write_csv_path}")
@@ -171,7 +171,7 @@ if __name__=="__main__":
     buy_csv_path = create_csv_today_buy_stocks(df_buy)
     exit_csv_path = create_csv_today_exit_stocks(df_exit) 
 
-    recipient_emails = os.getenv("RECIPIENT_EMAILS").split(",")
+    recipient_emails = get_recipient_emails()
     send_email_with_attachments(
         "UTBotStochasticRSI Buy/Sell Stocks", 
         """
