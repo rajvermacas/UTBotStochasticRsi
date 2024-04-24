@@ -4,6 +4,8 @@ import ta
 import traceback
 import builtins
 import concurrent.futures
+import numpy as np
+from lib.plots import plot_skewness
 
 from lib.indicators import calculate_atr_trailing_stop
 from lib.buy_sell import calculate_atr_buy_sell_signal
@@ -65,12 +67,16 @@ def summarise_transactions(transactions):
     entries = len(transactions)
     exits = len([t for t in transactions if t.sell_price is not None])
     winrate = wins / exits * 100 if exits > 0 else 0
+    sharpe_ratio = calculate_sharpe_ratio([t.abs_profit for t in transactions])
+    skewness = calculate_skewness([t.abs_profit for t in transactions])
     return {
         'Wins': wins,
         'Losses': losses,
         'Entries': entries,
         'Exits': exits,
         'Winrate': round(winrate, 2),
+        'Sharpe Ratio': sharpe_ratio,
+        'Skewness': skewness
     }
 
 def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column):
@@ -87,7 +93,7 @@ def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column)
         result |= transactions_stats
 
         builtins.logging.info(f"result={result}, Transactions={[str(t) for t in transactions]}")
-        return result
+        return result, transactions
 
     except Exception as e:
         print(f"Error occured in while getting transaction stats. ticker={ticker_name}, error={e}")        
@@ -151,11 +157,13 @@ def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=
 
 def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures):
     best_transactions_stat = None
+    best_transactions_list = None
 
     for future in concurrent.futures.as_completed(futures):
-        transactions_stat = future.result()
+        transactions_stat, transactions = future.result()
         if best_transactions_stat is None or transactions_stat['Profit'] > best_transactions_stat['Profit']:
             best_transactions_stat = transactions_stat
+            best_transactions_list = transactions
                 
     builtins.logging.info(f"Ticker Name: {ticker_name}, Best transactions_stat: {best_transactions_stat}")
 
@@ -165,5 +173,76 @@ def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures
         best_transactions_stat['Profit/StockGrowth'] = -round(best_transactions_stat['Profit']/stock_growth, 2)
     else:
         best_transactions_stat['Profit/StockGrowth'] = round(best_transactions_stat['Profit']/stock_growth, 2)
+    
+    # plot_skewness(ticker_name, [t.abs_profit for t in best_transactions_list])
 
     return best_transactions_stat
+
+def calculate_sharpe_ratio(returns, risk_free_rate=0.05):
+    """
+    Calculate the Sharpe Ratio for the given returns.
+
+    Parameters
+    ----------
+    returns : array-like
+        The returns for which the Sharpe Ratio is to be calculated.
+    risk_free_rate : float, optional
+        The risk-free rate of return, by default 0.0
+
+    Returns
+    -------
+    float
+        The Sharpe Ratio.
+    """
+    if not returns:
+        return np.nan
+    # Convert returns to a numpy array if it's not already
+    returns = np.array(returns)
+
+    # Calculate the excess returns by subtracting the risk-free rate
+    excess_returns = returns - risk_free_rate
+
+    # Calculate the mean of excess returns
+    mean_excess_returns = np.mean(excess_returns)
+
+    # Calculate the standard deviation of returns
+    std_dev_returns = np.std(returns)
+
+    # Calculate the Sharpe Ratio
+    if std_dev_returns == 0:
+        return np.nan  # Return NaN if standard deviation is zero to avoid division by zero
+
+    return round(mean_excess_returns / std_dev_returns, 2)
+
+def calculate_skewness(data):
+    """
+    Calculate the skewness of the given data and plot its distribution.
+
+    Parameters
+    ----------
+    data : array-like
+        The data for which the skewness is to be calculated.
+
+    Returns
+    -------
+    float
+        The skewness of the data.
+    """
+    if not data:
+        return np.nan
+    # Convert data to a numpy array if it's not already
+    data = np.array(data)
+
+    # Calculate the mean of the data
+    mean_data = np.mean(data)
+
+    # Calculate the standard deviation of the data
+    std_dev_data = np.std(data)
+    if std_dev_data == 0:
+        return np.nan
+
+    # Calculate the skewness using the formula for skewness
+    skewness = np.sum((data - mean_data) ** 3) / (len(data) * (std_dev_data ** 3))
+    skewness = round(skewness, 2)
+
+    return skewness

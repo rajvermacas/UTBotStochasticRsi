@@ -1,6 +1,8 @@
 import plotly.graph_objects as go
 import ta
 from plotly.subplots import make_subplots
+import numpy as np
+import matplotlib.pyplot as plt
 
 from lib.indicators import calculate_stochastic
 
@@ -40,3 +42,44 @@ def plot_graph(data, ticker_name):
 
     # # Show the plot
     fig.show()
+  
+def plot_skewness(ticker_name, data):
+    """
+    Calculate the skewness of the given data and plot its distribution.
+
+    Parameters
+    ----------
+    data : array-like
+        The data for which the skewness is to be calculated.
+
+    Returns
+    -------
+    float
+        The skewness of the data.
+    """
+    if not data:
+        return np.nan
+    # Convert data to a numpy array if it's not already
+    data = np.array(data)
+
+    # Calculate the mean of the data
+    mean_data = np.mean(data)
+
+    # Calculate the standard deviation of the data
+    std_dev_data = np.std(data)
+    if std_dev_data == 0:
+        return np.nan
+
+    # Calculate the skewness using the formula for skewness
+    skewness = np.sum((data - mean_data) ** 3) / (len(data) * (std_dev_data ** 3))
+    skewness = round(skewness, 2)
+
+    # Plotting the data distribution    
+    plt.figure(figsize=(10, 6))
+    plt.hist(data, bins=30, alpha=0.7, color='blue', edgecolor='black')
+    plt.axvline(mean_data, color='red', linestyle='dashed', linewidth=2)
+    plt.title(f'Data Distribution and Skewness: {skewness} for {ticker_name}')
+    plt.xlabel('Profit/Loss')
+    plt.ylabel('Frequency')
+    plt.grid(True)
+    plt.show()

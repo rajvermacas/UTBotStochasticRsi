@@ -98,7 +98,7 @@ if __name__=="__main__":
     init_log()
     backtest_start_date, backtest_end_date = get_backtest_start_end_date()
 
-    # ticker_names = ["DIXON.NS", "^NSEI", "SAKUMA.NS"]
+    # ticker_names = ["DIXON.NS", "^NSEI"]
     ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
     df_profit = pd.DataFrame(columns=['Stock', 'Stock Growth', 'Profit'])
 
@@ -108,7 +108,7 @@ if __name__=="__main__":
         ticker_names_page = ticker_names[i:i+page_size]
         df_profit = maximise_stocks_profit(backtest_start_date, backtest_end_date, df_profit, i, ticker_names_page)
     
-    print("Time taken: ", time.time() - _start_time)
+    print("Time taken: ", round(time.time() - _start_time, 2))
 
 
 

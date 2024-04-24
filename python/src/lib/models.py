@@ -8,17 +8,20 @@ class Transaction:
 
         self.sell_price = None
         self.sell_date = None
+        
+        # Profit %
         self.profit = None
+        self.abs_profit = None
         self.duration = None
     
     def end(self, sell_price, sell_date):
         self.sell_price = sell_price
         self.sell_date = sell_date
 
-        abs_profit = self.sell_price * self.quantity - self.cost
+        self.abs_profit = self.sell_price * self.quantity - self.cost
         self.profit = (self.sell_price * self.quantity - self.cost)/self.cost * 100
         self.duration = (self.sell_date - self.buy_date).days
-        return abs_profit
+        return self.abs_profit
     
     def get_profit(self):
         return self.profit
