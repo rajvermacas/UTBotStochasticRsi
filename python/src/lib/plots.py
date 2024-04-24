@@ -79,7 +79,7 @@ def plot_skewness(ticker_name, data):
     plt.hist(data, bins=30, alpha=0.7, color='blue', edgecolor='black')
     plt.axvline(mean_data, color='red', linestyle='dashed', linewidth=2)
     plt.title(f'Data Distribution and Skewness: {skewness} for {ticker_name}')
-    plt.xlabel('Profit/Loss')
+    plt.xlabel('Avg Profit/Loss per trade')
     plt.ylabel('Frequency')
     plt.grid(True)
     plt.show()
