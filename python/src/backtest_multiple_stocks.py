@@ -9,6 +9,7 @@ import concurrent.futures
 import time
 import logging
 import builtins
+from multiprocessing import Pool
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -25,8 +26,8 @@ import os
 # Load environment variables from .env file
 load_dotenv()
 
-def init_log():
-    log_file_name = os.path.join(os.getenv("OUTPUT_DIR"), "indicator.log")
+def init_log(suffix):
+    log_file_name = os.path.join(os.getenv("OUTPUT_DIR"), f"indicator_{suffix}.log")
     logging.basicConfig(filename=log_file_name, level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     builtins.logging = logging
 
@@ -65,7 +66,11 @@ def pre_populate_indicators(ticker_df):
     # Calculating ATR trailing stop loss
     atr_column = calculate_atr_trailing_stop(ticker_df)
 
-def maximise_stocks_profit(backtest_start_date, backtest_end_date, df_profit, ticker_counter, ticker_names):
+def maximise_stocks_profit(args):
+    backtest_start_date, backtest_end_date, ticker_counter, ticker_names = args
+    df_profit = pd.DataFrame(columns=['Stock', 'Stock Growth', 'Profit'])
+    init_log(ticker_counter)
+    
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
     for ticker_name, ticker_data in tickers_data.items():
@@ -95,19 +100,21 @@ def maximise_stocks_profit(backtest_start_date, backtest_end_date, df_profit, ti
 
 if __name__=="__main__":
     _start_time = time.time()
-    init_log()
+    init_log("main")
     backtest_start_date, backtest_end_date = get_backtest_start_end_date()
 
     # ticker_names = ["DIXON.NS", "^NSEI"]
     ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
-    df_profit = pd.DataFrame(columns=['Stock', 'Stock Growth', 'Profit'])
 
     page_size = 50
-
-    for i in range(0, len(ticker_names), page_size):
-        ticker_names_page = ticker_names[i:i+page_size]
-        df_profit = maximise_stocks_profit(backtest_start_date, backtest_end_date, df_profit, i, ticker_names_page)
+    params = []
+    for i in range(0, len(ticker_names), page_size):                    
+        ticker_names_page = ticker_names[i:i+page_size]        
+        params.append((backtest_start_date, backtest_end_date, i, ticker_names_page))
     
+    with Pool(8) as p:
+        df_profit = p.map(maximise_stocks_profit, params)
+
     print("Time taken: ", round(time.time() - _start_time, 2))
 
 
