@@ -8,8 +8,11 @@
 7. Input/Output flow
     nifty_stock_names.csv
         backtest_multiple_stocks.py
-            stock_performance.csv
+            stock_performance*.csv
                 favourable_stocks.py
                     favourable_stocks.csv
                         generate_today_buy_sell_stocks.py
                             timestamp_buy_stocks.csv, timestamp_exit_stocks.csv
+
+8. Create conda environment with the requirements
+conda env create -f conda-env.yml

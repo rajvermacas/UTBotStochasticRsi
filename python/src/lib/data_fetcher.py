@@ -49,7 +49,7 @@ def get_nifty_stock_names(filename=None):
     return df.Symbol.to_list()
 
 def get_favourable_stock_names():
-    csv_path = os.path.join(os.getenv("INPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\input"), "favourable_stocks.csv")
+    csv_path = os.path.join(os.getenv("OUTPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\output"), "favourable_stocks.csv")
     df = pd.read_csv(csv_path)
     df['Stock'] = df['Stock']+".NS"
     return df.Stock.to_list()

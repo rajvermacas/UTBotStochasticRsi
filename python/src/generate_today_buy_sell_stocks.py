@@ -2,13 +2,35 @@
 Prerequisites: input/favourable_stocks.csv
 """
 # sourcery skip: for-append-to-extend, list-comprehension
+
+# ============================ Project setup ================================
+from dotenv import load_dotenv
+import sys
+import os
+
+def init_project():
+    project_src_dir = os.path.dirname(__file__)
+    sys.path.append(project_src_dir)
+
+    project_root_dir = os.path.dirname(project_src_dir)
+    
+    os.environ['ROOT_DIR'] = project_root_dir
+    os.environ['OUTPUT_DIR'] = os.path.join(project_root_dir, 'output')
+    os.environ['INPUT_DIR'] = os.path.join(project_root_dir, 'input')
+
+    # Load environment variables from .env file
+    load_dotenv()
+
+
+if __name__ == "__main__":
+    init_project()
+
+# ============================ Business logic ==============================
 import pandas as pd
 import concurrent.futures
 import time
 import logging
 import builtins
-from datetime import datetime, timedelta
-
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -17,31 +39,13 @@ from lib.indicator_evaluation import get_transactions_summary, calculate_stock_g
 from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
 from lib.email_utils import send_email_with_attachments, get_recipient_emails
+from lib.util import date_util
 
-from dotenv import load_dotenv
-import os
-
-# Load environment variables from .env file
-load_dotenv()
 
 def init_log():
     log_file_name = os.path.join(os.getenv("OUTPUT_DIR"), "indicator.log")
     logging.basicConfig(filename=log_file_name, level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     builtins.logging = logging
-
-def get_backtest_start_end_date():    
-    tomorrow_date = datetime.now() + timedelta(days=1)
-    start_date = tomorrow_date - timedelta(days=365*4)
-
-    backtest_start_date = start_date.strftime("%Y-%m-%d")
-    backtest_end_date = tomorrow_date.strftime("%Y-%m-%d")
-
-    # backtest_start_date = "2024-01-01"
-    # backtest_end_date = "2024-04-03" # For backtesting add 1 day + the actual date
-    return backtest_start_date, backtest_end_date
-
-def today_date():
-    return datetime.now().strftime("%Y-%m-%d")
 
 def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations):
     ticker_data = ticker_data.copy(deep=True)
@@ -66,7 +70,7 @@ def pre_populate_indicators(ticker_df):
     atr_column = calculate_atr_trailing_stop(ticker_df)
 
 def create_csv_today_buy_stocks(df_buy):
-    t_date = today_date()
+    t_date = date_util.today_date()
     write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"Buy_{t_date}.csv")
     
     cols = df_buy.columns.tolist()
@@ -81,7 +85,7 @@ def create_csv_today_buy_stocks(df_buy):
     return write_csv_path
 
 def create_csv_today_exit_stocks(df_exit):
-    t_date = today_date()
+    t_date = date_util.today_date()
     write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"Exit_{t_date}.csv")
     
     cols = df_exit.columns.tolist()
@@ -125,7 +129,7 @@ def calculate_today_exit_stocks(best_transactions_stat, ticker_data):
 if __name__=="__main__":
     _start_time = time.time()
     init_log()
-    backtest_start_date, backtest_end_date = get_backtest_start_end_date()
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date()
 
     ticker_names = get_favourable_stock_names()
     df_profit = pd.DataFrame()
@@ -178,8 +182,8 @@ if __name__=="__main__":
         Hi Trader,
         
         - Please find 2 csv files attached: one for buy stocks and the other for exit stocks.
-        - The stock selection is based on backtesting from Jan 2017 to Apr 2024 across all the nifty 1966 stocks.
-        - The data in the attached csv files' columns is based on the last 4 years of backtesting.
+        - The stock selection is based on backtesting from 1 Jan 2023 to 11 Jun 2024 across all the nifty 1966 stocks.
+        - The data in the attached csv files is based on the last 1 year of testing
         - Before taking a trade, please cross-check with UTBotStochasticRSI at https://in.tradingview.com/script/pyOJZFzk-UT-Bot-Stochastic-RSI/
         
         Thank you
