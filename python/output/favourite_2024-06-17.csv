@@ -1,0 +1,2 @@
+Date,Stock,Stock Growth,Profit,Winrate,Profit/StockGrowth,BuyColumns,SellColumn,Wins,Losses,Entries,Exits,Sharpe Ratio,Skewness
+2024-05-24,ARTEMISMED,349.42,263.22,100.0,0.75,atrBuySignal,atrSellSignal,5.0,0.0,5.0,5.0,0.88,1.37

@@ -55,7 +55,7 @@ def calculate_stock_growth(data, start_date, end_date):
         end_price = filtered_data.iloc[-1]['Close']
         
         # Calculate growth
-        growth = (end_price - start_price) / start_price * 100
+        growth = ((end_price - start_price) / start_price) * 100
         growth = round(growth, 2)
         return growth or 0.01
     else:
@@ -84,7 +84,11 @@ def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column)
         transactions, profit = start_transactions(ticker_data, ticker_name, buy_columns, sell_column)
         transactions_stats = summarise_transactions(transactions)
 
+        if ticker_name.endswith('.NS'):
+            ticker_name = ticker_name[:-3]
+         
         result = {
+            'Date': ticker_data.index[-1],
             'Stock': ticker_name, 
             'Profit': round(profit, 2), 
             'BuyColumns': ",".join(buy_columns), 

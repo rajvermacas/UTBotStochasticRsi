@@ -38,12 +38,12 @@ from lib.data_fetcher import get_tickers_data, get_favourable_stock_names
 from lib.indicator_evaluation import get_transactions_summary, calculate_stock_growth, calculate_most_profitable_buy_combination
 from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
-from lib.email_utils import send_email_with_attachments, get_recipient_emails
+from lib.util.email_utils import send_email_with_attachments, get_recipient_emails
 from lib.util import date_util
 
 
 def init_log():
-    log_file_name = os.path.join(os.getenv("OUTPUT_DIR"), "indicator.log")
+    log_file_name = os.path.join(os.getenv("OUTPUT_DIR"), "log", "indicator.log")
     logging.basicConfig(filename=log_file_name, level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     builtins.logging = logging
 
