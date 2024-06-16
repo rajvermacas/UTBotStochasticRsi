@@ -51,8 +51,6 @@ def send_email_with_attachments(subject, message, recipient_emails, attachment_p
     except Exception as e:
         print(f"Failed to send email with attachments to {recipient_emails}. Error: {e}")
 
-
-# TODO Rename this here and in `send_email_with_attachments`
 def _send_email(sender_email, sender_password, msg, recipient_emails):
     server = smtplib.SMTP('smtp.gmail.com', 587) # Use appropriate SMTP server details
     server.starttls() # Enable security

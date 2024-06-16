@@ -6,7 +6,6 @@ from lib.indicators import calculate_stochastic
 
 
 def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
-    # todo
     # sourcery skip: inline-immediately-returned-variable
     rsi_indicator = ta.momentum.RSIIndicator(data['Close'], window=rsi_period)
     rsi = rsi_indicator.rsi()
@@ -33,7 +32,6 @@ def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
     return rsi_buy_column
 
 def calculate_stochastic_buy_signal(data):
-    # todo
     # sourcery skip: inline-immediately-returned-variable
     # Calculate %K and %D
     k, d = calculate_stochastic(data)
@@ -113,4 +111,16 @@ def get_buy_columns_combinations(buy_columns):
             all_combinations.append(combo)
 
     return all_combinations
+
+def is_today_buy_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
+    ticker_data = ticker_data.tail(1)    
+    buy_columns = best_transactions_stat['BuyColumns'].split(',')
+
+    return all(ticker_data[col].all() for col in buy_columns)
+
+def is_today_exit_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
+    ticker_data = ticker_data.tail(1)
+    exit_columns = best_transactions_stat['SellColumn'].split(',')
+
+    return any(ticker_data[col].any() for col in exit_columns)
 

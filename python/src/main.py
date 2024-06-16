@@ -33,16 +33,16 @@ import time
 import logging
 import builtins
 from multiprocessing import Pool
-
+from lib.buy_sell import is_today_buy_stock, is_today_exit_stock
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from lib.data_fetcher import get_tickers_data, get_nifty_stock_names
+from lib.data_fetcher import get_tickers_data, get_nifty_stock_names, is_favourite_stock
 from lib.indicator_evaluation import get_transactions_summary, calculate_stock_growth, calculate_most_profitable_buy_combination
 from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
-from lib.util import date_util
+from lib.util import date_util, csv_util
 
 
 def init_log(suffix):
@@ -74,7 +74,7 @@ def pre_populate_indicators(ticker_df):
 
 def maximise_stocks_profit(args):
     print(f"Starting to maximise stocks profit...")
-    backtest_start_date, backtest_end_date, ticker_counter, ticker_names = args
+    backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
     
     df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
     df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
@@ -105,9 +105,9 @@ def maximise_stocks_profit(args):
                 ignore_index=True
             )
 
-            is_favourite_stock = is_favourite(best_transactions_stat)
+            is_favourite = is_favourite_stock(best_transactions_stat, ticker_name, manual_favourite_stocks)
 
-            if is_favourite_stock:
+            if is_favourite:
                 df_favourite = pd.concat(
                     [
                         df_favourite, 
@@ -139,38 +139,6 @@ def maximise_stocks_profit(args):
             builtins.logging.exception(f"Error occured in main thread. ticker={ticker_name}. error={e}")
     
     return df_profit, df_favourite, df_buy, df_exit
-
-
-def is_favourite(best_transactions_stat: dict):
-    return (best_transactions_stat['Profit/StockGrowth'] > 0.7) \
-        and (best_transactions_stat['Profit'] > 200) \
-        and (best_transactions_stat['Winrate'] >= 60)
-
-def is_today_buy_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
-    ticker_data = ticker_data.tail(1)    
-    buy_columns = best_transactions_stat['BuyColumns'].split(',')
-
-    return all(ticker_data[col].all() for col in buy_columns)
-
-def is_today_exit_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
-    ticker_data = ticker_data.tail(1)
-    exit_columns = best_transactions_stat['SellColumn'].split(',')
-
-    return any(ticker_data[col].any() for col in exit_columns)
-
-def create_csv(df_buy, sort_by, filename, ascending=False):
-    t_date = date_util.today_date()
-    write_csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"{filename}_{t_date}.csv")
-    
-    cols = df_buy.columns.tolist()
-    cols.insert(0, cols.pop(cols.index('Date')))  # Move the 'Date' column to the first position
-    df_buy = df_buy[cols]
-
-    df_buy = df_buy.sort_values(by=sort_by, ascending=ascending)
-
-    df_buy.to_csv(write_csv_path, index=False)
-    print(f"CSV created: {write_csv_path}")
-    return write_csv_path
   
 
 if __name__=="__main__":
@@ -188,12 +156,15 @@ if __name__=="__main__":
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
 
+    df_manual_favourite_stocks = pd.read_csv(os.path.join(os.getenv("INPUT_DIR"), "manual_favourite.csv"))
+    manual_favourite_stocks = {stock for stock in df_manual_favourite_stocks['Stock']}
+
     page_size = 50
     params = []
     results = []
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
-        params.append((backtest_start_date, backtest_end_date, i, ticker_names_page))
+        params.append((backtest_start_date, backtest_end_date, i, ticker_names_page, manual_favourite_stocks))
         
         # Only for testing purpose
         # results.append(maximise_stocks_profit(params[-1]))
@@ -214,10 +185,10 @@ if __name__=="__main__":
         final_df_buy = pd.concat([final_df_buy, df_buy], ignore_index=True)
         final_df_exit = pd.concat([final_df_exit, df_exit], ignore_index=True)
     
-    create_csv(final_df_profit, 'Profit', 'performance')
-    create_csv(final_df_favourite, 'Winrate', 'favourite')
-    create_csv(final_df_buy, 'Winrate', 'buy')
-    create_csv(final_df_exit, 'Winrate', 'exit')
+    csv_util.create_csv(final_df_profit, 'Profit', 'performance')
+    csv_util.create_csv(final_df_favourite, 'Winrate', 'favourite')
+    csv_util.create_csv(final_df_buy, 'Winrate', 'buy')
+    csv_util.create_csv(final_df_exit, 'Winrate', 'exit')
     
     print("Time taken: ", round(time.time() - _start_time, 2))
 

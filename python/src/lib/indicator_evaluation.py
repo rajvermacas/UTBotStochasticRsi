@@ -13,7 +13,6 @@ from lib.models import Transaction
 
 
 def calculate_max_drawdown(transactions):
-    # Todo
     """
     Calculate the maximum drawdown from a list of transactions.
     

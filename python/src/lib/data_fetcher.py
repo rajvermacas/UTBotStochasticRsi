@@ -54,6 +54,15 @@ def get_favourable_stock_names():
     df['Stock'] = df['Stock']+".NS"
     return df.Stock.to_list()
 
+def is_favourite_stock(best_transactions_stat: dict, ticker_name: str, \
+                       manual_favourite_stocks: set):
+    
+    return (ticker_name in manual_favourite_stocks) \
+        or \
+        ((best_transactions_stat['Profit/StockGrowth'] > 0.7) \
+        and (best_transactions_stat['Profit'] > 200) \
+        and (best_transactions_stat['Winrate'] >= 60))
+
 
 if __name__=="__main__":
     ticker_names = get_nifty_stock_names()
