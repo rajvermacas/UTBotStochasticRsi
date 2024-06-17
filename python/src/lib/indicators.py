@@ -1,7 +1,7 @@
 import ta
 import pandas as pd
 
-def calculate_atr_trailing_stop(data, atr_sensitivity=2, atr_period=3):
+def calculate_atr_trailing_stop(data: pd.DataFrame, atr_sensitivity=2, atr_period=3):
     """
     Calculate ATR Trailing Stop
     ------------------------------------

@@ -95,7 +95,7 @@ def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column)
         }
         result |= transactions_stats
 
-        builtins.logging.info(f"result={result}, Transactions={[str(t) for t in transactions]}")
+        builtins.logging.info(f"Transactions summary={result}, Transactions={[str(t) for t in transactions]}")
         return result, transactions
 
     except Exception as e:

@@ -49,6 +49,8 @@ def init_log(suffix):
     log_file_name = os.path.join(os.getenv("OUTPUT_DIR"), "log", f"indicator_{suffix}.log")
     logging.basicConfig(filename=log_file_name, level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
     builtins.logging = logging
+    
+    builtins.logging.info(f"Initializing log for suffix={suffix} log_file_name={log_file_name}")
 
 def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations):
     ticker_data = ticker_data.copy(deep=True)
@@ -74,6 +76,7 @@ def pre_populate_indicators(ticker_df):
 
 def maximise_stocks_profit(args):
     print(f"Starting to maximise stocks profit...")
+
     backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
     
     df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
@@ -82,12 +85,15 @@ def maximise_stocks_profit(args):
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     
     init_log(ticker_counter)
+    builtins.logging.info(f"Starting to maximise stocks profit...")
     
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
     # Iterate over each stock
     for ticker_name, ticker_data in tickers_data.items():
         try:
+            builtins.logging.info(f"Starting to maximise stocks profit for ticker={ticker_name}")
+
             pre_populate_indicators(ticker_data)
             stock_growth = calculate_stock_growth(ticker_data, backtest_start_date, backtest_end_date)
 
