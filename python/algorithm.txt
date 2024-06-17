@@ -1,0 +1,24 @@
+2024-06-17 19:57:32,227:INFO:Transactions summary={'Date': Timestamp('2024-06-14 00:00:00'), 'Stock': 'ANKITMETAL', 'Profit': 0.87, 'BuyColumns': 'atrBuySignal', 'SellColumn': 'atrSellSignal', 'Wins': 2, 'Losses': 11, 'Entries': 13, 'Exits': 13, 'Winrate': 15.38, 'Sharpe Ratio': 0.0, 'Skewness': 2.64}, 
+
+Transactions=['
+Transaction(symbol=ANKITMETAL.NS, quantity=144.92753422878744, buy_price=6.900000095367432, buy_date=2022-06-22 00:00:00, sell_price=6.25, sell_date=2022-07-27 00:00:00, profit=-9.420291107007847, duration=35)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=135.19359921135137, buy_price=6.699999809265137, buy_date=2022-09-09 00:00:00, sell_price=6.050000190734863, sell_date=2022-09-16 00:00:00, profit=-9.70148711991629, duration=7)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=139.81560929036993, buy_price=5.849999904632568, buy_date=2022-10-27 00:00:00, sell_price=5.75, sell_date=2022-11-23 00:00:00, profit=-1.709400107056065, duration=27)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=123.68303898763492, buy_price=6.5, buy_date=2022-12-07 00:00:00, sell_price=5.400000095367432, sell_date=2022-12-23 00:00:00, profit=-16.923075455885666, duration=16)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=146.7886580946918, buy_price=4.550000190734863, buy_date=2023-04-05 00:00:00, sell_price=4.099999904632568, sell_date=2023-05-22 00:00:00, profit=-9.890115763481235, duration=47)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=240.73339367575164, buy_price=2.5, buy_date=2023-08-21 00:00:00, sell_price=5.300000190734863, sell_date=2023-10-03 00:00:00, profit=112.00000762939455, duration=43)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=300.20871350534935, buy_price=4.25, buy_date=2023-10-30 00:00:00, sell_price=4.150000095367432, sell_date=2023-11-06 00:00:00, profit=-2.3529389325310306, duration=7)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=262.28761887943864, buy_price=4.75, buy_date=2023-11-09 00:00:00, sell_price=4.449999809265137, sell_date=2023-11-24 00:00:00, profit=-6.315793489155016, duration=15)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=281.2481511239024, buy_price=4.150000095367432, buy_date=2023-12-13 00:00:00, sell_price=4.650000095367432, sell_date=2024-01-01 00:00:00, profit=12.048192494215627, duration=19)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=242.18590860211333, buy_price=5.400000095367432, buy_date=2024-01-08 00:00:00, sell_price=4.800000190734863, sell_date=2024-01-17 00:00:00, profit=-11.111109148818322, duration=9)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=255.49282609935182, buy_price=4.550000190734863, buy_date=2024-02-08 00:00:00, sell_price=4.400000095367432, sell_date=2024-02-12 00:00:00, profit=-3.2967052544937534, duration=4)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=252.62213649139127, buy_price=4.449999809265137, buy_date=2024-02-19 00:00:00, sell_price=4.300000190734863, sell_date=2024-02-28 00:00:00, profit=-3.3707780889780263, duration=9)', '
+Transaction(symbol=ANKITMETAL.NS, quantity=258.6369724828378, buy_price=4.199999809265137, buy_date=2024-04-04 00:00:00, sell_price=3.9000000953674316, sell_date=2024-05-08 00:00:00, profit=-7.142850655276478, duration=34)']
+
+for every day calculate_most_profitable_buy_combination -> best transaction stat
+based on best transaction stat's buyColumns, generate today buy sell signal
+start transaction on today buy signal
+end transaction on today exit signal
+add transaction to backtest_transactions list
+backtest_transactions will be used to find the transaction summary
+This transaction summary should be used as the source of truth and favourite stocks should be computed based on this transaction summary

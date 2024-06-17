@@ -81,22 +81,22 @@ def summarise_transactions(transactions):
 def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column):
     try:
         transactions, profit = start_transactions(ticker_data, ticker_name, buy_columns, sell_column)
-        transactions_stats = summarise_transactions(transactions)
+        transactions_stat = summarise_transactions(transactions)
 
         if ticker_name.endswith('.NS'):
             ticker_name = ticker_name[:-3]
          
-        result = {
+        transactions_summary = {
             'Date': ticker_data.index[-1],
             'Stock': ticker_name, 
             'Profit': round(profit, 2), 
             'BuyColumns': ",".join(buy_columns), 
             'SellColumn': sell_column,
         }
-        result |= transactions_stats
+        transactions_summary |= transactions_stat
 
-        builtins.logging.info(f"Transactions summary={result}, Transactions={[str(t) for t in transactions]}")
-        return result, transactions
+        builtins.logging.info(f"Transactions summary={transactions_summary}, Transactions={[str(t) for t in transactions]}")
+        return transactions_summary, transactions
 
     except Exception as e:
         print(f"Error occured in while getting transaction stats. ticker={ticker_name}, error={e}")        
