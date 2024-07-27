@@ -390,7 +390,6 @@ if showBacktest
 
     [profitPerc, openBalance, winrate, entries, exits, wins, losses] = do_transaction(backtestDateStart, backtestDateEnd, bestBuy, bestSell, _initial_capital=initialCapital)
 
-    // N2 = N-2, N1 = N-1, N=current
     var float profitPercCheckpoint1 = na
     var float profitPercCheckpoint2 = na
     var float profitPercCheckpoint3 = na
