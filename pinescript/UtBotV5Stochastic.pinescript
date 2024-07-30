@@ -45,7 +45,7 @@ f_backtest_table(_initial_capital, _profit_perc_total, _open_balance, _winrate, 
     table_values = _table_position == 'LEFT' ? 2 : 1
     table_offset = _table_position == 'LEFT' ? 0 : 2
 
-    backtesting_table = table.new(table_position, columns=3, rows=11, border_width=3)
+    backtesting_table = table.new(table_position, columns=3, rows=8, border_width=3)
     profit_color = _open_balance > _initial_capital ? green : red
 
     table.cell(backtesting_table, table_titles, 0, text='    Investment per trade    ', bgcolor=_table_title_cell_color, text_color=_table_text_color,  text_halign=text.align_left, text_size=size.small)
@@ -81,7 +81,7 @@ f_checkpoint_table(_profit_perc_checkpoint_1, _profit_perc_checkpoint_2, _profit
     table_values = _table_position == 'LEFT' ? 2 : 1
     table_offset = _table_position == 'LEFT' ? 0 : 2
 
-    backtesting_table = table.new(position.bottom_left, columns=3, rows=10, border_width=3)
+    backtesting_table = table.new(position.bottom_left, columns=3, rows=9, border_width=3)
 
     table.cell(backtesting_table, table_titles, 0, text='    Checkpoint 1 Profit    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
     table.cell(backtesting_table, table_titles, 1, text='    Checkpoint 1 Wins / Losses    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
