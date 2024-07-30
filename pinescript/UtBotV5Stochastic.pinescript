@@ -11,7 +11,7 @@ atrPeriod = input(3, title='ATR Period')
 emaFastPeriod = input(9, title='Fast EMA Period')
 emaSlowPeriod = input(20, title='Slow EMA Period')
 showBacktest = input(true, title='Show backtest result')
-showCheckpoints = input(true, title='Show checkpoints results')
+showCheckpoints = input(false, title='Show checkpoints results')
 showBuySell = input(false, title='Show Buy/Sell signal')
 lowRiskEntry = input(false, title='Low-Risk Entry')
 
