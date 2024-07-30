@@ -34,16 +34,16 @@ f_backtest_table_margin(int margin) =>
 // Library: Backtest Strategy Optimizer Adapter
 // Author: DinGrogu
 f_backtest_table(_initial_capital, _profit_perc_total, _open_balance, _winrate, _entries, _exits, _wins, _losses, stockGrowth, _table_position='RIGHT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
-    var green = #26A69A
-    var red = #FF5252
+    green = #26A69A
+    red = #FF5252
 
-    var table_width = 0
-    var table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
-    var table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
+    table_width = 0
+    table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
+    table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
 
-    var table_titles = _table_position == 'LEFT' ? 1 : 0
-    var table_values = _table_position == 'LEFT' ? 2 : 1
-    var table_offset = _table_position == 'LEFT' ? 0 : 2
+    table_titles = _table_position == 'LEFT' ? 1 : 0
+    table_values = _table_position == 'LEFT' ? 2 : 1
+    table_offset = _table_position == 'LEFT' ? 0 : 2
 
     backtesting_table = table.new(table_position, columns=3, rows=11, border_width=3)
     profit_color = _open_balance > _initial_capital ? green : red
@@ -69,17 +69,17 @@ f_backtest_table(_initial_capital, _profit_perc_total, _open_balance, _winrate, 
     table.cell(backtesting_table, table_offset, 0, table_margin_right, bgcolor=color.new(color.white, 100), text_color=color.white, text_size=size.small)
 
 
-f_checkpoint_table(_initial_capital, _profit_perc_checkpoint_1, _profit_perc_checkpoint, _profit_perc_checkpoint_3, _profit_perc_total, _wins_checkpoint_1, _wins_checkpoint, _wins_checkpoint_3, _losses_checkpoint_1, _losses_checkpoint, _losses_checkpoint_3, _stock_growth_checkpoint_1, _stock_growth_checkpoint, _stock_growth_checkpoint_3, _open_balance, _winrate, _entries, _exits, _wins, _losses, stockGrowth, _table_position='LEFT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
-    var green = #26A69A
-    var red = #FF5252
+f_checkpoint_table(_profit_perc_checkpoint_1, _profit_perc_checkpoint_2, _profit_perc_checkpoint_3, _wins_checkpoint_1, _wins_checkpoint_2, _wins_checkpoint_3, _losses_checkpoint_1, _losses_checkpoint_2, _losses_checkpoint_3, _stock_growth_checkpoint_1, _stock_growth_checkpoint_2, _stock_growth_checkpoint_3, _table_position='LEFT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
+    green = #26A69A
+    red = #FF5252
 
-    var table_width = 0
-    var table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
-    var table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
+    table_width = 0
+    table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
+    table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
 
-    var table_titles = _table_position == 'LEFT' ? 1 : 0
-    var table_values = _table_position == 'LEFT' ? 2 : 1
-    var table_offset = _table_position == 'LEFT' ? 0 : 2
+    table_titles = _table_position == 'LEFT' ? 1 : 0
+    table_values = _table_position == 'LEFT' ? 2 : 1
+    table_offset = _table_position == 'LEFT' ? 0 : 2
 
     backtesting_table = table.new(position.bottom_left, columns=3, rows=10, border_width=3)
 
@@ -100,11 +100,11 @@ f_checkpoint_table(_initial_capital, _profit_perc_checkpoint_1, _profit_perc_che
     table.cell(backtesting_table, table_values, 1, text='    ' + str.tostring(_wins_checkpoint_1) + '/' + str.tostring(_losses_checkpoint_1), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 2, text='    ' + str.tostring(_stock_growth_checkpoint_1, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
 
-    table.cell(backtesting_table, table_values, 3, text='    ' + str.tostring(_profit_perc_checkpoint, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_1 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
-    table.cell(backtesting_table, table_values, 4, text='    ' + str.tostring(_wins_checkpoint) + '/' + str.tostring(_losses_checkpoint), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
-    table.cell(backtesting_table, table_values, 5, text='    ' + str.tostring(_stock_growth_checkpoint, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 3, text='    ' + str.tostring(_profit_perc_checkpoint_2, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_2 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 4, text='    ' + str.tostring(_wins_checkpoint_2) + '/' + str.tostring(_losses_checkpoint_2), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 5, text='    ' + str.tostring(_stock_growth_checkpoint_2, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     
-    table.cell(backtesting_table, table_values, 6, text='    ' + str.tostring(_profit_perc_checkpoint_3, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_1 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 6, text='    ' + str.tostring(_profit_perc_checkpoint_3, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_3 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 7, text='    ' + str.tostring(_wins_checkpoint_3) + '/' + str.tostring(_losses_checkpoint_3), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 8, text='    ' + str.tostring(_stock_growth_checkpoint_3, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
 
@@ -465,4 +465,4 @@ if showCheckpoints
         lossesCheckpoint3 := losses - lossesCheckpoint1 - lossesCheckpoint2
         stockGrowthCheckpoint3 := stockGrowth - stockGrowthCheckpoint1 - stockGrowthCheckpoint2
     
-    f_checkpoint_table(initialCapital, profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, profitPerc, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3,openBalance, winrate, entries, exits, wins, losses, stockGrowth)
+    f_checkpoint_table(profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3)
