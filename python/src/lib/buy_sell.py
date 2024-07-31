@@ -113,14 +113,14 @@ def get_buy_columns_combinations(buy_columns):
     return all_combinations
 
 def is_today_buy_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
-    ticker_data = ticker_data.tail(1)    
+    ticker_data_last = ticker_data.tail(1)    
     buy_columns = best_transactions_stat['BuyColumns'].split(',')
 
-    return all(ticker_data[col].all() for col in buy_columns)
+    return all(ticker_data_last[col].all() for col in buy_columns)
 
 def is_today_exit_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
-    ticker_data = ticker_data.tail(1)
+    ticker_data_last = ticker_data.tail(1)
     exit_columns = best_transactions_stat['SellColumn'].split(',')
 
-    return any(ticker_data[col].any() for col in exit_columns)
+    return any(ticker_data_last[col].any() for col in exit_columns)
 

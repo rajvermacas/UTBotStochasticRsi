@@ -83,6 +83,7 @@ def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column)
         transactions, profit = start_transactions(ticker_data, ticker_name, buy_columns, sell_column)
         transactions_stat = summarise_transactions(transactions)
 
+        # Remove .NS from the ticker name
         if ticker_name.endswith('.NS'):
             ticker_name = ticker_name[:-3]
          
@@ -158,12 +159,18 @@ def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=
     
     return transactions, (balance-initial_captital)/initial_captital * 100
 
-def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures):
+def calculate_most_profitable_buy_combination(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations):
     best_transactions_stat = None
     best_transactions_list = None
 
-    for future in concurrent.futures.as_completed(futures):
-        transactions_stat, transactions = future.result()
+    for buy_cols_combination in buy_columns_combinations:
+        transactions_stat, transactions = get_transactions_summary(
+            ticker_name,
+            ticker_data,
+            buy_cols_combination,
+            sell_column,
+        )
+
         if best_transactions_stat is None or transactions_stat['Profit'] > best_transactions_stat['Profit']:
             best_transactions_stat = transactions_stat
             best_transactions_list = transactions
@@ -179,6 +186,7 @@ def calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures
     
     # plot_skewness(ticker_name, [t.abs_profit for t in best_transactions_list])
 
+    print(f"Calculated most profitable buy combination. ticker name={ticker_name}")
     return best_transactions_stat
 
 def calculate_sharpe_ratio(returns, risk_free_rate=0.05):

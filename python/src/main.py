@@ -34,6 +34,8 @@ import logging
 import builtins
 from multiprocessing import Pool
 from lib.buy_sell import is_today_buy_stock, is_today_exit_stock
+from datetime import datetime, timedelta
+
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -56,16 +58,16 @@ def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy
     ticker_data = ticker_data.copy(deep=True)
     futures = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         futures.extend(
             executor.submit(
                 get_transactions_summary,
                 ticker_name,
                 ticker_data,
-                buy_combos,
+                buy_cols_combination,
                 sell_column,
             )
-            for buy_combos in buy_columns_combinations
+            for buy_cols_combination in buy_columns_combinations
         )
     print(f"Created threads to do transactions on all the buy columns combinations for ticker={ticker_name}")
     return futures
@@ -99,6 +101,41 @@ def maximise_stocks_profit(args):
 
             buy_columns, sell_column = calculate_multiple_buy_sell_signals(ticker_data)  
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
+
+            ticker_profit = 0
+            buy_price = 0
+            sell_price = 0
+
+            # Iterate from start to end date
+            # With each iteration add one more row from the iterated date
+            # Iterate over each date in the ticker_data
+            for i in range(1, len(ticker_data) + 1):
+                # Create a subset of the data up to the current date
+                current_data = ticker_data.iloc[:i].copy()
+                
+                # Create threads and calculate transactions for the current subset
+                # futures = create_threads_to_do_transactions(ticker_name, current_data, sell_column, buy_columns_combinations)
+                current_best_stat = calculate_most_profitable_buy_combination(ticker_name, stock_growth, current_data, sell_column, buy_columns_combinations)
+
+                if is_today_buy_stock(current_best_stat, current_data):
+                    buy_price = current_data['Close'][-1]
+                
+                if is_today_exit_stock(current_best_stat, current_data):
+                    sell_price = current_data['Close'][-1]
+                    profit = sell_price - buy_price
+                    ticker_profit += profit
+                    
+                    buy_price = 0
+                    sell_price = 0
+
+                
+                # Log progress
+                if i % 100 == 0 or i == len(ticker_data):
+                    builtins.logging.info(f"Processed {i}/{len(ticker_data)} rows for {ticker_name}")
+                    print(f"Processed {i}/{len(ticker_data)} rows for {ticker_name}")
+                
+                # You might want to do something with current_best_stat here,
+                # such as storing it or comparing it with previous results
 
             futures = create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations)
             best_transactions_stat = calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures)
@@ -147,17 +184,17 @@ def maximise_stocks_profit(args):
     return df_profit, df_favourite, df_buy, df_exit
   
 
-if __name__=="__main__":
+if __name__ == "__main__":
     _start_time = time.time()
     init_log("main")
-    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=2)
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
     
     # Only for testing purpose
-    # backtest_end_date = "2024-05-25"
+    backtest_end_date = "2024-05-25"
 
     # Only for testing purpose
-    # ticker_names = ["ARTEMISMED.NS", "^NSEI"]
-    ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
+    ticker_names = ["ARTEMISMED.NS", "^NSEI"]
+    # ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
 
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
@@ -173,10 +210,10 @@ if __name__=="__main__":
         params.append((backtest_start_date, backtest_end_date, i, ticker_names_page, manual_favourite_stocks))
         
         # Only for testing purpose
-        # results.append(maximise_stocks_profit(params[-1]))
+        results.append(maximise_stocks_profit(params[-1]))
     
-    with Pool(8) as p:
-        results = p.map(maximise_stocks_profit, params)
+    # with Pool(8) as p:
+    #     results = p.map(maximise_stocks_profit, params)
     
     # Initialize empty DataFrames to concatenate results
     final_df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
