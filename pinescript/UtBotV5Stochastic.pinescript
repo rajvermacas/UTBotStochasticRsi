@@ -11,10 +11,14 @@ atrPeriod = input(3, title='ATR Period')
 emaFastPeriod = input(9, title='Fast EMA Period')
 emaSlowPeriod = input(20, title='Slow EMA Period')
 showBacktest = input(true, title='Show backtest result')
-backtestDateStart = input.time(title="Backtest Start Date", defval=timestamp("2000-01-01"))
-backtestDateEnd = input.time(title="Backtest End Date", defval=timestamp("2050-01-01"))
+showCheckpoints = input(false, title='Show checkpoints results')
 showBuySell = input(false, title='Show Buy/Sell signal')
 lowRiskEntry = input(false, title='Low-Risk Entry')
+
+backtestDateStart = input.time(title="Backtest Start Date", defval=timestamp("2021-07-28"))
+checkpointDate1 = input.time(title="First Checkpoint Date", defval=timestamp("2022-07-28"))
+checkpointDate2 = input.time(title="Second Checkpoint Date", defval=timestamp("2023-07-28"))
+backtestDateEnd = input.time(title="Backtest End Date", defval=timestamp("2050-07-28"))
 
 
 // Courtsey: https://www.tradingview.com/script/tsHCuCEi-Backtest-Strategy-Optimizer-Adapter/
@@ -29,38 +33,83 @@ f_backtest_table_margin(int margin) =>
 // Courtsey: https://www.tradingview.com/script/tsHCuCEi-Backtest-Strategy-Optimizer-Adapter/
 // Library: Backtest Strategy Optimizer Adapter
 // Author: DinGrogu
-f_backtest_table(_initial_capital, _profit_and_loss, _open_balance, _winrate, _entries, _exits, _wins, _losses, stockGrowth, _table_position='RIGHT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
-    var green = #26A69A
-    var red = #FF5252
+f_backtest_table(_initial_capital, _profit_perc_total, _open_balance, _winrate, _entries, _exits, _wins, _losses, stockGrowth, _table_position='RIGHT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
+    green = #26A69A
+    red = #FF5252
 
-    var table_width = 0
-    var table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
-    var table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
+    table_width = 0
+    table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
+    table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
 
-    var table_titles = _table_position == 'LEFT' ? 1 : 0
-    var table_values = _table_position == 'LEFT' ? 2 : 1
-    var table_offset = _table_position == 'LEFT' ? 0 : 2
+    table_titles = _table_position == 'LEFT' ? 1 : 0
+    table_values = _table_position == 'LEFT' ? 2 : 1
+    table_offset = _table_position == 'LEFT' ? 0 : 2
 
     backtesting_table = table.new(table_position, columns=3, rows=8, border_width=3)
     profit_color = _open_balance > _initial_capital ? green : red
 
+    // Headers
     table.cell(backtesting_table, table_titles, 0, text='    Investment per trade    ', bgcolor=_table_title_cell_color, text_color=_table_text_color,  text_halign=text.align_left, text_size=size.small)
     table.cell(backtesting_table, table_titles, 1, text='    Close Balance    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
-    table.cell(backtesting_table, table_titles, 2, text='    Profit / Loss ($)    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
-    table.cell(backtesting_table, table_titles, 3, text='    Profit / Loss (%)    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
-    table.cell(backtesting_table, table_titles, 4, text='    Stock Growth (%)    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 2, text='    Profit ($)    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 3, text='    Total Profit    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 4, text='    Stock Growth    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
     table.cell(backtesting_table, table_titles, 5, text='    Entries / Exits    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
     table.cell(backtesting_table, table_titles, 6, text='    Wins / Losses   ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
-    table.cell(backtesting_table, table_titles, 7, text='    Winrate (%)    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 7, text='    Winrate    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
 
+    // Values
     table.cell(backtesting_table, table_values, 0, text='    ' + str.tostring(_initial_capital, '###,###.##') + '   ', width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 1, text='    ' + str.tostring(_open_balance, '###,###.##') + '   ', width=table_width, bgcolor=color.new(profit_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 2, text='    ' + str.tostring(_open_balance - _initial_capital, '###,###.##') + '   ', width=table_width, bgcolor=color.new(profit_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
-    table.cell(backtesting_table, table_values, 3, text='    ' + str.tostring(_profit_and_loss, format.percent) + '   ', width=table_width, bgcolor=color.new(_open_balance - _initial_capital >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 3, text='    ' + str.tostring(_profit_perc_total, format.percent) + '   ', width=table_width, bgcolor=color.new(_profit_perc_total >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 4, text='    ' + str.tostring(stockGrowth, '#.##') + '%' + '   ', width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 5, text='    ' + str.tostring(_entries, '###,###.##') + ' / ' + str.tostring(_exits, '###,###.##') + '   ', width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 6, text='    ' + str.tostring(_wins, '###,###.##') + ' / ' + str.tostring(_losses, '###,###.##') + '   ', width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
     table.cell(backtesting_table, table_values, 7, text='    ' + str.tostring(_winrate, '#.##') + '%' + '   ', width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+
+    table.cell(backtesting_table, table_offset, 0, table_margin_right, bgcolor=color.new(color.white, 100), text_color=color.white, text_size=size.small)
+
+
+f_checkpoint_table(_profit_perc_checkpoint_1, _profit_perc_checkpoint_2, _profit_perc_checkpoint_3, _wins_checkpoint_1, _wins_checkpoint_2, _wins_checkpoint_3, _losses_checkpoint_1, _losses_checkpoint_2, _losses_checkpoint_3, _stock_growth_checkpoint_1, _stock_growth_checkpoint_2, _stock_growth_checkpoint_3, _table_position='LEFT', _table_margin=15, _table_transparency=20, _table_cell_color=color.purple, _table_title_cell_color=color.gray, _table_text_color=color.white) =>
+    green = #26A69A
+    red = #FF5252
+
+    table_width = 0
+    table_margin_right = _table_margin > 0 ? str.tostring(f_backtest_table_margin(_table_margin)) : ''
+    table_position = _table_position == 'LEFT' ? position.bottom_left : position.bottom_right
+
+    table_titles = _table_position == 'LEFT' ? 1 : 0
+    table_values = _table_position == 'LEFT' ? 2 : 1
+    table_offset = _table_position == 'LEFT' ? 0 : 2
+
+    backtesting_table = table.new(position.bottom_left, columns=3, rows=9, border_width=3)
+
+    // Headers
+    table.cell(backtesting_table, table_titles, 0, text='    Checkpoint 1 Profit    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 1, text='    Checkpoint 1 Wins / Losses    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 2, text='    Checkpoint 1 Stock Growth    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    
+    table.cell(backtesting_table, table_titles, 3, text='    Checkpoint 2 Profit    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 4, text='    Checkpoint 2 Wins / Losses    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 5, text='    Checkpoint 2 Stock Growth    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    
+    table.cell(backtesting_table, table_titles, 6, text='    Checkpoint 3 Profit    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 7, text='    Checkpoint 3 Wins / Losses    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+    table.cell(backtesting_table, table_titles, 8, text='    Checkpoint 3 Stock Growth    ', bgcolor=_table_title_cell_color, text_color=_table_text_color, text_halign=text.align_left, text_size=size.small)
+
+    // Values
+    table.cell(backtesting_table, table_values, 0, text='    ' + str.tostring(_profit_perc_checkpoint_1, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_1 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 1, text='    ' + str.tostring(_wins_checkpoint_1) + '/' + str.tostring(_losses_checkpoint_1), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 2, text='    ' + str.tostring(_stock_growth_checkpoint_1, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+
+    table.cell(backtesting_table, table_values, 3, text='    ' + str.tostring(_profit_perc_checkpoint_2, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_2 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 4, text='    ' + str.tostring(_wins_checkpoint_2) + '/' + str.tostring(_losses_checkpoint_2), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 5, text='    ' + str.tostring(_stock_growth_checkpoint_2, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    
+    table.cell(backtesting_table, table_values, 6, text='    ' + str.tostring(_profit_perc_checkpoint_3, format.percent), width=table_width, bgcolor=color.new(_profit_perc_checkpoint_3 >= 0 ? green : red, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 7, text='    ' + str.tostring(_wins_checkpoint_3) + '/' + str.tostring(_losses_checkpoint_3), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
+    table.cell(backtesting_table, table_values, 8, text='    ' + str.tostring(_stock_growth_checkpoint_3, format.percent), width=table_width, bgcolor=color.new(_table_cell_color, _table_transparency), text_color=color.new(color.white, 0), text_halign=text.align_right, text_size=size.small)
 
     table.cell(backtesting_table, table_offset, 0, table_margin_right, bgcolor=color.new(color.white, 100), text_color=color.white, text_size=size.small)
 
@@ -374,10 +423,49 @@ plot(emaSlow, color=color.blue, title="EMA Slow")
 enclosedArea = src > xATRTrailingStop ? (src < emaFast ? true : false) : (src > emaFast ? true : false)
 bgcolor(enclosedArea ? (src > emaFast ? color.new(color.green, 90) : color.new(color.red, 90)) : na)
 
-// It plots the profit table
-if showBacktest
-    stockGrowth = calculatePriceGrowth(backtestDateStart, backtestDateEnd)
-    initialCapital = 1000.00
+stockGrowth = calculatePriceGrowth(backtestDateStart, backtestDateEnd)
+initialCapital = 1000.00
 
-    [profitAndLoss, openBalance, winrate, entries, exits, wins, losses] = do_transaction(backtestDateStart, backtestDateEnd, bestBuy, bestSell, _initial_capital=initialCapital)
-    f_backtest_table(initialCapital, profitAndLoss, openBalance, winrate, entries, exits, wins, losses, stockGrowth)
+[profitPerc, openBalance, winrate, entries, exits, wins, losses] = do_transaction(backtestDateStart, backtestDateEnd, bestBuy, bestSell, _initial_capital=initialCapital)
+
+// It plots the profit table
+if showBacktest    
+    f_backtest_table(initialCapital, profitPerc, openBalance, winrate, entries, exits, wins, losses, stockGrowth)
+
+// It plots checkpoint table
+if showCheckpoints
+    var float profitPercCheckpoint1 = na
+    var float profitPercCheckpoint2 = na
+    var float profitPercCheckpoint3 = na
+
+    var int winsCheckpoint1 = na
+    var int winsCheckpoint2 = na
+    var int winsCheckpoint3 = na
+
+    var int lossesCheckpoint1 = na
+    var int lossesCheckpoint2 = na
+    var int lossesCheckpoint3 = na
+
+    var float stockGrowthCheckpoint1 = na
+    var float stockGrowthCheckpoint2 = na
+    var float stockGrowthCheckpoint3 = na
+
+    if time >= backtestDateStart and time < checkpointDate1
+        profitPercCheckpoint1 := profitPerc
+        winsCheckpoint1 := wins
+        lossesCheckpoint1 := losses
+        stockGrowthCheckpoint1 := stockGrowth
+
+    else if time >= checkpointDate1 and time < checkpointDate2
+        profitPercCheckpoint2 := profitPerc - profitPercCheckpoint1
+        winsCheckpoint2 := wins - winsCheckpoint1
+        lossesCheckpoint2 := losses - lossesCheckpoint1
+        stockGrowthCheckpoint2 := stockGrowth - stockGrowthCheckpoint1
+        
+    else if time >= checkpointDate2 and time < backtestDateEnd
+        profitPercCheckpoint3 := profitPerc - profitPercCheckpoint1 - profitPercCheckpoint2
+        winsCheckpoint3 := wins - winsCheckpoint1 - winsCheckpoint2
+        lossesCheckpoint3 := losses - lossesCheckpoint1 - lossesCheckpoint2
+        stockGrowthCheckpoint3 := stockGrowth - stockGrowthCheckpoint1 - stockGrowthCheckpoint2
+    
+    f_checkpoint_table(profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3)
