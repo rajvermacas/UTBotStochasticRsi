@@ -450,22 +450,54 @@ if showCheckpoints
     var float stockGrowthCheckpoint2 = na
     var float stockGrowthCheckpoint3 = na
 
+    var float stockGrowthOpenPrice = na
+    var float stockGrowthClosePrice = na
+
+    var sgCheckpoint1Done = false
+    var sgCheckpoint2Done = false
+    var sgCheckpoint3Done = false
+    var sgCheckpoint4Done = false
+
+    // Checkpoint Stock growth %
+    if time >= backtestDateStart and time < checkpointDate1
+        if(sgCheckpoint1Done == false)
+            sgCheckpoint1Done := true
+            stockGrowthOpenPrice := close
+    
+    else if time >= checkpointDate1 and time < checkpointDate2
+        if(sgCheckpoint2Done == false)
+            sgCheckpoint2Done := true
+            stockGrowthClosePrice := close
+            stockGrowthCheckpoint1 := ((stockGrowthClosePrice-stockGrowthOpenPrice)/stockGrowthOpenPrice)*100
+            stockGrowthOpenPrice := close
+    
+    else if time >= checkpointDate2 and time < backtestDateEnd and barstate.islast == false
+        if(sgCheckpoint3Done == false)
+            sgCheckpoint3Done := true
+            stockGrowthClosePrice := close
+            stockGrowthCheckpoint2 := ((stockGrowthClosePrice-stockGrowthOpenPrice)/stockGrowthOpenPrice)*100
+            stockGrowthOpenPrice := close
+    
+    else if time >= backtestDateEnd or barstate.islast
+        if(sgCheckpoint4Done == false)
+            sgCheckpoint4Done := true
+            stockGrowthClosePrice := close
+            stockGrowthCheckpoint3 := ((stockGrowthClosePrice-stockGrowthOpenPrice)/stockGrowthOpenPrice)*100
+
+    // Checkpoint Indicator profit %, wins and losses count
     if time >= backtestDateStart and time < checkpointDate1
         profitPercCheckpoint1 := profitPerc
         winsCheckpoint1 := wins
         lossesCheckpoint1 := losses
-        stockGrowthCheckpoint1 := stockGrowth
 
     else if time >= checkpointDate1 and time < checkpointDate2
         profitPercCheckpoint2 := profitPerc - profitPercCheckpoint1
         winsCheckpoint2 := wins - winsCheckpoint1
         lossesCheckpoint2 := losses - lossesCheckpoint1
-        stockGrowthCheckpoint2 := stockGrowth - stockGrowthCheckpoint1
         
     else if time >= checkpointDate2 and time < backtestDateEnd
         profitPercCheckpoint3 := profitPerc - profitPercCheckpoint1 - profitPercCheckpoint2
         winsCheckpoint3 := wins - winsCheckpoint1 - winsCheckpoint2
         lossesCheckpoint3 := losses - lossesCheckpoint1 - lossesCheckpoint2
-        stockGrowthCheckpoint3 := stockGrowth - stockGrowthCheckpoint1 - stockGrowthCheckpoint2
     
     f_checkpoint_table(profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3)
