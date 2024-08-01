@@ -105,6 +105,8 @@ def maximise_stocks_profit(args):
             ticker_profit = 0
             buy_price = 0
             sell_price = 0
+            quantity = 0
+            capital = 1000
 
             # Iterate from start to end date
             # With each iteration add one more row from the iterated date
@@ -119,10 +121,12 @@ def maximise_stocks_profit(args):
 
                 if is_today_buy_stock(current_best_stat, current_data):
                     buy_price = current_data['Close'][-1]
+                    quantity = capital/buy_price
+                    
                 
                 if is_today_exit_stock(current_best_stat, current_data):
                     sell_price = current_data['Close'][-1]
-                    profit = sell_price - buy_price
+                    profit = ( ( (sell_price - buy_price)*quantity) / capital ) * 100
                     ticker_profit += profit
                     
                     buy_price = 0
@@ -136,9 +140,26 @@ def maximise_stocks_profit(args):
                 
                 # You might want to do something with current_best_stat here,
                 # such as storing it or comparing it with previous results
-
-            futures = create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations)
-            best_transactions_stat = calculate_most_profitable_buy_combination(ticker_name, stock_growth, futures)
+            
+            # Create the values above
+            # Below is a sample object
+            best_transactions_stat = {
+                'Date': Timestamp('2024-05-2...00:00:00'), 
+                'Stock': 'ARTEMISMED', 
+                'Profit': 12.57, 
+                'BuyColumns': 
+                'rsiBuySignal', 
+                'SellColumn': 'atrSellSignal', 
+                'Wins': 3, 
+                'Losses': 0, 
+                'Entries': 3, 
+                'Exits': 3, 
+                'Winrate': 100.0, 
+                'Sharpe Ratio': 5.72, 
+                'Skewness': 0.6, 
+                'Stock Growth': 41.82, 
+                'Profit/StockGrowth': 0.3
+            }
 
             df_profit = pd.concat(
                 [
