@@ -7,6 +7,7 @@ Prerequisites: input/nifty_stock_names.csv
 from dotenv import load_dotenv
 import sys
 import os
+import traceback
 
 
 def init_project():
@@ -107,11 +108,16 @@ def maximise_stocks_profit(args):
             sell_price = 0
             quantity = 0
             capital = 1000
+            wins = 0
+            losses = 0
+            entries = 0
+            exits = 0
 
             # Iterate from start to end date
             # With each iteration add one more row from the iterated date
             # Iterate over each date in the ticker_data
             for i in range(1, len(ticker_data) + 1):
+
                 # Create a subset of the data up to the current date
                 current_data = ticker_data.iloc[:i].copy()
                 
@@ -122,6 +128,7 @@ def maximise_stocks_profit(args):
                 if is_today_buy_stock(current_best_stat, current_data):
                     buy_price = current_data['Close'][-1]
                     quantity = capital/buy_price
+                    entries += 1
                     
                 
                 if is_today_exit_stock(current_best_stat, current_data):
@@ -129,6 +136,12 @@ def maximise_stocks_profit(args):
                     profit = ( ( (sell_price - buy_price)*quantity) / capital ) * 100
                     ticker_profit += profit
                     
+                    if profit >= 0:
+                        wins += 1
+                    else:
+                        losses += 1
+
+                    exits += 1
                     buy_price = 0
                     sell_price = 0
 
@@ -144,21 +157,21 @@ def maximise_stocks_profit(args):
             # Create the values above
             # Below is a sample object
             best_transactions_stat = {
-                'Date': Timestamp('2024-05-2...00:00:00'), 
-                'Stock': 'ARTEMISMED', 
-                'Profit': 12.57, 
-                'BuyColumns': 
-                'rsiBuySignal', 
-                'SellColumn': 'atrSellSignal', 
-                'Wins': 3, 
-                'Losses': 0, 
-                'Entries': 3, 
-                'Exits': 3, 
-                'Winrate': 100.0, 
-                'Sharpe Ratio': 5.72, 
-                'Skewness': 0.6, 
-                'Stock Growth': 41.82, 
-                'Profit/StockGrowth': 0.3
+                'Date': ticker_data.index[-1], 
+                'Stock': ticker_name, 
+                'Profit': ticker_profit, 
+                # 'BuyColumns': 
+                # 'rsiBuySignal', 
+                # 'SellColumn': 'atrSellSignal', 
+                'Wins': wins, 
+                'Losses': losses, 
+                'Entries': entries, 
+                'Exits': exits, 
+                'Winrate': (wins/(wins+losses)) * 100, 
+                # 'Sharpe Ratio': 5.72, 
+                # 'Skewness': 0.6, 
+                'Stock Growth': stock_growth, 
+                'Profit/StockGrowth': (ticker_profit/stock_growth) * 100
             }
 
             df_profit = pd.concat(
@@ -201,6 +214,15 @@ def maximise_stocks_profit(args):
         except Exception as e:
             print(f"Error occured in maximising stock profit. ticker={ticker_name}. error={e}")
             builtins.logging.exception(f"Error occured in main thread. ticker={ticker_name}. error={e}")
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+
+            # Print the exception
+            print("Exception type:", exc_type)
+            print("Exception value:", exc_value)
+
+            # Print the traceback
+            print("Traceback:")
+            traceback.print_tb(exc_traceback)
     
     return df_profit, df_favourite, df_buy, df_exit
   
@@ -211,7 +233,7 @@ if __name__ == "__main__":
     backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
     
     # Only for testing purpose
-    backtest_end_date = "2024-05-25"
+    # backtest_end_date = "2024-05-25"
 
     # Only for testing purpose
     ticker_names = ["ARTEMISMED.NS", "^NSEI"]
