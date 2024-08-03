@@ -10,6 +10,8 @@ from lib.plots import plot_skewness
 from lib.indicators import calculate_atr_trailing_stop
 from lib.buy_sell import calculate_atr_buy_sell_signal
 from lib.models import Transaction
+from evaluate import service
+import traceback
 
 
 def calculate_max_drawdown(transactions):
@@ -122,6 +124,9 @@ def find_best_atr_combination(data, ticker, atr_sensitivity_range, atr_period_ra
 
     return best_combination, max_profit
 
+def get_profit_column_name(buy_columns):
+    return "profit_"+"_".join(buy_columns)
+
 def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=1000):
     """
     Calculate profit based on buy and sell signals.
@@ -136,58 +141,82 @@ def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=
     total_profit : float
         The total profit calculated from the buy and sell signals.
     """
-    buy_price = None
-    balance = initial_captital
-    transaction = None
-    transactions = []
+    try:
+        buy_price = None
+        balance = initial_captital
+        transaction = None
+        transactions = []
 
-    for i in range(len(data)):
-        # Check for a buy signal and remember the transaction
-        if all(data[col][i] for col in buy_columns) and transaction is None:
-            buy_price = data['Close'][i]
-            buy_quantity = balance / buy_price
-            transaction = Transaction(symbol, buy_quantity, buy_price, data.index[i])
+        profit_column = get_profit_column_name(buy_columns)
+        data[profit_column] = None
 
-        # Check for a sell signal, calculate profit if a buy price is set, and reset transaction
-        if data[sell_column][i] and transaction is not None:
-            sell_price = data['Close'][i]
-            profit = transaction.end(sell_price, data.index[i])
-            balance += profit
+        profit_till_date = 0
+
+        for i in range(len(data)):
+            # Check for a buy signal and remember the transaction
+            if all(data[col][i] for col in buy_columns) and transaction is None:
+                buy_price = data['Close'][i]
+                buy_quantity = balance / buy_price
+                transaction = Transaction(symbol, buy_quantity, buy_price, data.index[i])
+
+            # Check for a sell signal, calculate profit if a buy price is set, and reset transaction
+            if data[sell_column][i] and transaction is not None:
+                sell_price = data['Close'][i]
+                profit = transaction.end(sell_price, data.index[i])
+
+                profit_till_date += transaction.profit
+                
+                transactions.append(transaction)
+                transaction = None
             
-            transactions.append(transaction)
-            transaction = None
-    
-    return transactions, (balance-initial_captital)/initial_captital * 100
+
+            if transactions:
+                data.iloc[i, data.columns.get_loc(profit_column)] = profit_till_date
+            else:
+                data.iloc[i, data.columns.get_loc(profit_column)] = 0
+
+        
+        return transactions, profit_till_date
+
+    except Exception as fault:
+        print(f"Error occured while starting transactions. error={fault}")
+        traceback.print_exc()
 
 def calculate_most_profitable_buy_combination(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations):
-    best_transactions_stat = None
-    best_transactions_list = None
+    # stock_growth, total_profit & winrate is in percentage    
+    transaction_stat = {
+        'open_position': False,
+        'buy_columns_combinations': None,
+        'Date': ticker_data.index[-1],
+        'Stock': ticker_name,
+        'Profit': 0,
+        'Stock Growth': stock_growth,
+        'Wins': 0,
+        'Losses': 0,
+        'Entries': 0,
+        'Exits': 0,
+        'Winrate': 0,
+    }
 
     for buy_cols_combination in buy_columns_combinations:
-        transactions_stat, transactions = get_transactions_summary(
+        # It will populate ticke_data with profit_indicator columns
+        _, transactions = get_transactions_summary(
             ticker_name,
             ticker_data,
             buy_cols_combination,
             sell_column,
         )
 
-        if best_transactions_stat is None or transactions_stat['Profit'] > best_transactions_stat['Profit']:
-            best_transactions_stat = transactions_stat
-            best_transactions_list = transactions
-                
-    builtins.logging.info(f"Ticker Name: {ticker_name}, Best transactions_stat: {best_transactions_stat}")
-
-    best_transactions_stat['Stock Growth'] = stock_growth
-                
-    if stock_growth < 0 and best_transactions_stat['Profit'] < 0:
-        best_transactions_stat['Profit/StockGrowth'] = -round(best_transactions_stat['Profit']/stock_growth, 2)
-    else:
-        best_transactions_stat['Profit/StockGrowth'] = round(best_transactions_stat['Profit']/stock_growth, 2)
+    # ticker_data.to_csv(r"C:\Users\mrina\OneDrive\Documents\projects\UTBotStochasticRsi\python\output\dummy.csv")
     
-    # plot_skewness(ticker_name, [t.abs_profit for t in best_transactions_list])
+    # Apply the function to create the summarised_profit column
+    for index, row in ticker_data.iterrows():
+        service.calculate_summarised_profit(transaction_stat, row)
+
+    builtins.logging.info(f"Ticker Name: {ticker_name}, Best transactions_stat: {transaction_stat}")
 
     print(f"Calculated most profitable buy combination. ticker name={ticker_name}")
-    return best_transactions_stat
+    return transaction_stat
 
 def calculate_sharpe_ratio(returns, risk_free_rate=0.05):
     """

@@ -78,17 +78,17 @@ def pre_populate_indicators(ticker_df):
     atr_column = calculate_atr_trailing_stop(ticker_df)
 
 def maximise_stocks_profit(args):
-    print(f"Starting to maximise stocks profit...")
+    print("Starting to maximise stocks profit...")
 
     backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
     
     df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
     df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-    df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
+    df_buy = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+    df_exit = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
     
     init_log(ticker_counter)
-    builtins.logging.info(f"Starting to maximise stocks profit...")
+    builtins.logging.info("Starting to maximise stocks profit...")
     
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
@@ -103,76 +103,11 @@ def maximise_stocks_profit(args):
             buy_columns, sell_column = calculate_multiple_buy_sell_signals(ticker_data)  
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
 
-            ticker_profit = 0
-            buy_price = 0
-            sell_price = 0
-            quantity = 0
-            capital = 1000
-            wins = 0
-            losses = 0
-            entries = 0
-            exits = 0
+            best_transactions_stat = calculate_most_profitable_buy_combination(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
 
-            # Iterate from start to end date
-            # With each iteration add one more row from the iterated date
-            # Iterate over each date in the ticker_data
-            for i in range(1, len(ticker_data) + 1):
-
-                # Create a subset of the data up to the current date
-                current_data = ticker_data.iloc[:i].copy()
-                
-                # Create threads and calculate transactions for the current subset
-                # futures = create_threads_to_do_transactions(ticker_name, current_data, sell_column, buy_columns_combinations)
-                current_best_stat = calculate_most_profitable_buy_combination(ticker_name, stock_growth, current_data, sell_column, buy_columns_combinations)
-
-                if is_today_buy_stock(current_best_stat, current_data):
-                    buy_price = current_data['Close'][-1]
-                    quantity = capital/buy_price
-                    entries += 1
-                    
-                
-                if is_today_exit_stock(current_best_stat, current_data):
-                    sell_price = current_data['Close'][-1]
-                    profit = ( ( (sell_price - buy_price)*quantity) / capital ) * 100
-                    ticker_profit += profit
-                    
-                    if profit >= 0:
-                        wins += 1
-                    else:
-                        losses += 1
-
-                    exits += 1
-                    buy_price = 0
-                    sell_price = 0
-
-                
-                # Log progress
-                if i % 100 == 0 or i == len(ticker_data):
-                    builtins.logging.info(f"Processed {i}/{len(ticker_data)} rows for {ticker_name}")
-                    print(f"Processed {i}/{len(ticker_data)} rows for {ticker_name}")
-                
-                # You might want to do something with current_best_stat here,
-                # such as storing it or comparing it with previous results
-            
-            # Create the values above
-            # Below is a sample object
-            best_transactions_stat = {
-                'Date': ticker_data.index[-1], 
-                'Stock': ticker_name, 
-                'Profit': ticker_profit, 
-                # 'BuyColumns': 
-                # 'rsiBuySignal', 
-                # 'SellColumn': 'atrSellSignal', 
-                'Wins': wins, 
-                'Losses': losses, 
-                'Entries': entries, 
-                'Exits': exits, 
-                'Winrate': (wins/(wins+losses)) * 100, 
-                # 'Sharpe Ratio': 5.72, 
-                # 'Skewness': 0.6, 
-                'Stock Growth': stock_growth, 
-                'Profit/StockGrowth': (ticker_profit/stock_growth) * 100
-            }
+            best_transactions_stat.pop('open_position', None)
+            best_transactions_stat.pop('buy_columns_combinations', None)
+            best_transactions_stat.pop('profit_column', None)
 
             df_profit = pd.concat(
                 [
@@ -182,9 +117,7 @@ def maximise_stocks_profit(args):
                 ignore_index=True
             )
 
-            is_favourite = is_favourite_stock(best_transactions_stat, ticker_name, manual_favourite_stocks)
-
-            if is_favourite:
+            if is_favourite_stock(best_transactions_stat, ticker_name, manual_favourite_stocks):
                 df_favourite = pd.concat(
                     [
                         df_favourite, 
@@ -231,7 +164,7 @@ if __name__ == "__main__":
     _start_time = time.time()
     init_log("main")
     backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
-    
+
     # Only for testing purpose
     # backtest_end_date = "2024-05-25"
 
@@ -243,7 +176,7 @@ if __name__ == "__main__":
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
 
     df_manual_favourite_stocks = pd.read_csv(os.path.join(os.getenv("INPUT_DIR"), "manual_favourite.csv"))
-    manual_favourite_stocks = {stock for stock in df_manual_favourite_stocks['Stock']}
+    manual_favourite_stocks = set(df_manual_favourite_stocks['Stock'])
 
     page_size = 50
     params = []
@@ -251,16 +184,16 @@ if __name__ == "__main__":
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
         params.append((backtest_start_date, backtest_end_date, i, ticker_names_page, manual_favourite_stocks))
-        
+
         # Only for testing purpose
         results.append(maximise_stocks_profit(params[-1]))
-    
+
     # with Pool(8) as p:
     #     results = p.map(maximise_stocks_profit, params)
-    
+
     # Initialize empty DataFrames to concatenate results
-    final_df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-    final_df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
+    final_df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
+    final_df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
     final_df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     final_df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
 
@@ -270,12 +203,12 @@ if __name__ == "__main__":
         final_df_favourite = pd.concat([final_df_favourite, df_favourite], ignore_index=True)
         final_df_buy = pd.concat([final_df_buy, df_buy], ignore_index=True)
         final_df_exit = pd.concat([final_df_exit, df_exit], ignore_index=True)
-    
+
     csv_util.create_csv(final_df_profit, 'Profit', 'performance')
     csv_util.create_csv(final_df_favourite, 'Winrate', 'favourite')
     csv_util.create_csv(final_df_buy, 'Winrate', 'buy')
     csv_util.create_csv(final_df_exit, 'Winrate', 'exit')
-    
+
     print("Time taken: ", round(time.time() - _start_time, 2))
 
 

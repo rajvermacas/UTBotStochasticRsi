@@ -108,6 +108,7 @@ def get_buy_columns_combinations(buy_columns):
     for r in range(1, len(buy_columns) + 1):
         for combo in combinations(buy_columns, r):
             combo = set(combo)
+            combo = sorted(combo)
             all_combinations.append(combo)
 
     return all_combinations
