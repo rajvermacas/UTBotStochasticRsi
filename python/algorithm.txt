@@ -22,3 +22,9 @@ end transaction on today exit signal
 add transaction to backtest_transactions list
 backtest_transactions will be used to find the transaction summary
 This transaction summary should be used as the source of truth and favourite stocks should be computed based on this transaction summary
+
+
+multiprocessing without threading
+345 seconds
+
+multiprocessing with threading

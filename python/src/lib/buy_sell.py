@@ -91,7 +91,7 @@ def calculate_close_above_atr_signal(data):
     data[close_above_atr_buy_column] = (data['Close'] >= data['ATR_TS'])
     return close_above_atr_buy_column
 
-def calculate_multiple_buy_sell_signals(ticker_data):
+def calculate_buy_sell_signals(ticker_data):
     atr_buy_column, atr_sell_column = calculate_atr_buy_sell_signal(ticker_data)
     rsi_buy_column = calculate_rsi_buy_signal(ticker_data)
     stochastic_buy_column = calculate_stochastic_buy_signal(ticker_data)
@@ -115,13 +115,13 @@ def get_buy_columns_combinations(buy_columns):
 
 def is_today_buy_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
     ticker_data_last = ticker_data.tail(1)    
-    buy_columns = best_transactions_stat['BuyColumns'].split(',')
+    buy_columns = best_transactions_stat['BuyColumns']
 
     return all(ticker_data_last[col].all() for col in buy_columns)
 
 def is_today_exit_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
     ticker_data_last = ticker_data.tail(1)
-    exit_columns = best_transactions_stat['SellColumn'].split(',')
+    exit_column = best_transactions_stat['SellColumn']
 
-    return any(ticker_data_last[col].any() for col in exit_columns)
+    return any(ticker_data_last[exit_column])
 

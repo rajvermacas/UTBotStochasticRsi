@@ -33,10 +33,11 @@ def calculate_summarised_profit(transaction, row):
 
     # Only take trade when not in trade already
     if not transaction['open_position']:
-        for signal_col, profit_col in zip(signal_columns, profit_columns):
+        for signal_cols, profit_col in zip(signal_columns, profit_columns):
             if row[profit_col] > max_profit:
                 max_profit = row[profit_col]
-                best_signal_column_combination = signal_col
+                best_signal_column_combination = signal_cols
+                transaction['BuyColumns'] = signal_cols
 
         # Check if the most profitable strategy is giving a buy signal
         if best_signal_column_combination and all(
@@ -59,7 +60,6 @@ def _populate_transaction(transaction, row):
     transaction['open_position'] = False
 
     result = row[transaction['profit_column']]
-    transaction['buy_columns_combinations'] = None
 
     transaction['Exits'] = transaction.get('Exits', 0) + 1
     transaction['Wins'] = transaction.get('Wins', 0) + (result > transaction['Profit'])

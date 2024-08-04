@@ -14,6 +14,9 @@ class Transaction:
         self.abs_profit = None
         self.duration = None
     
+    def is_active(self):
+        return self.sell_price is None
+    
     def end(self, sell_price, sell_date):
         self.sell_price = sell_price
         self.sell_date = sell_date

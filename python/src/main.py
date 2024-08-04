@@ -42,8 +42,8 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 from lib.data_fetcher import get_tickers_data, get_nifty_stock_names, is_favourite_stock
-from lib.indicator_evaluation import get_transactions_summary, calculate_stock_growth, calculate_most_profitable_buy_combination
-from lib.buy_sell import calculate_multiple_buy_sell_signals, get_buy_columns_combinations
+from lib.indicator_evaluation import do_transactions, calculate_stock_growth, get_best_strategy_stats
+from lib.buy_sell import calculate_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
 from lib.util import date_util, csv_util
 
@@ -62,7 +62,7 @@ def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         futures.extend(
             executor.submit(
-                get_transactions_summary,
+                do_transactions,
                 ticker_name,
                 ticker_data,
                 buy_cols_combination,
@@ -77,7 +77,7 @@ def pre_populate_indicators(ticker_df):
     # Calculating ATR trailing stop loss
     atr_column = calculate_atr_trailing_stop(ticker_df)
 
-def maximise_stocks_profit(args):
+def process_stocks(args):
     print("Starting to maximise stocks profit...")
 
     backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
@@ -100,49 +100,12 @@ def maximise_stocks_profit(args):
             pre_populate_indicators(ticker_data)
             stock_growth = calculate_stock_growth(ticker_data, backtest_start_date, backtest_end_date)
 
-            buy_columns, sell_column = calculate_multiple_buy_sell_signals(ticker_data)  
+            buy_columns, sell_column = calculate_buy_sell_signals(ticker_data)  
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
 
-            best_transactions_stat = calculate_most_profitable_buy_combination(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
+            best_transactions_stat = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
 
-            best_transactions_stat.pop('open_position', None)
-            best_transactions_stat.pop('buy_columns_combinations', None)
-            best_transactions_stat.pop('profit_column', None)
-
-            df_profit = pd.concat(
-                [
-                    df_profit, 
-                    pd.DataFrame(best_transactions_stat, index=[0])
-                ], 
-                ignore_index=True
-            )
-
-            if is_favourite_stock(best_transactions_stat, ticker_name, manual_favourite_stocks):
-                df_favourite = pd.concat(
-                    [
-                        df_favourite, 
-                        pd.DataFrame([best_transactions_stat])
-                    ], 
-                    ignore_index=True
-                )
-          
-                if is_today_buy_stock(best_transactions_stat, ticker_data):
-                    df_buy = pd.concat(
-                        [
-                            df_buy, 
-                            pd.DataFrame([best_transactions_stat])
-                        ], 
-                        ignore_index=True
-                    )
-
-                if is_today_exit_stock(best_transactions_stat, ticker_data):
-                    df_exit = pd.concat(
-                        [
-                            df_exit, 
-                            pd.DataFrame([best_transactions_stat])
-                        ], 
-                        ignore_index=True
-                    )
+            df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat)
                 
         except Exception as e:
             print(f"Error occured in maximising stock profit. ticker={ticker_name}. error={e}")
@@ -158,6 +121,49 @@ def maximise_stocks_profit(args):
             traceback.print_tb(exc_traceback)
     
     return df_profit, df_favourite, df_buy, df_exit
+
+def create_output_dataframes(manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat):
+    best_transactions_stat.pop('open_position', None)
+    best_transactions_stat.pop('profit_column', None)
+
+    profit_transaction_stat = {k:v for k,v in best_transactions_stat.items() if k not in ['BuyColumns', 'SellColumn']}
+
+    df_profit = pd.concat(
+                [
+                    df_profit, 
+                    pd.DataFrame(profit_transaction_stat, index=[0])
+                ], 
+                ignore_index=True
+            )
+
+    if is_favourite_stock(best_transactions_stat, ticker_name, manual_favourite_stocks):
+        df_favourite = pd.concat(
+                    [
+                        df_favourite, 
+                        pd.DataFrame([best_transactions_stat])
+                    ], 
+                    ignore_index=True
+                )
+          
+        if is_today_buy_stock(best_transactions_stat, ticker_data):
+            df_buy = pd.concat(
+                        [
+                            df_buy, 
+                            pd.DataFrame([best_transactions_stat])
+                        ], 
+                        ignore_index=True
+                    )
+
+        if is_today_exit_stock(best_transactions_stat, ticker_data):
+            df_exit = pd.concat(
+                        [
+                            df_exit, 
+                            pd.DataFrame([best_transactions_stat])
+                        ], 
+                        ignore_index=True
+                    )
+            
+    return df_profit,df_favourite,df_buy,df_exit
   
 
 if __name__ == "__main__":
@@ -169,7 +175,7 @@ if __name__ == "__main__":
     # backtest_end_date = "2024-05-25"
 
     # Only for testing purpose
-    ticker_names = ["ARTEMISMED.NS", "^NSEI"]
+    ticker_names = ["ESAFSFB.NS", "^NSEI"]
     # ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
 
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
@@ -186,10 +192,10 @@ if __name__ == "__main__":
         params.append((backtest_start_date, backtest_end_date, i, ticker_names_page, manual_favourite_stocks))
 
         # Only for testing purpose
-        results.append(maximise_stocks_profit(params[-1]))
+        results.append(process_stocks(params[-1]))
 
     # with Pool(8) as p:
-    #     results = p.map(maximise_stocks_profit, params)
+    #     results = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
     final_df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])

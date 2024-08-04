@@ -80,54 +80,45 @@ def summarise_transactions(transactions):
         'Skewness': skewness
     }
 
-def get_transactions_summary(ticker_name, ticker_data, buy_columns, sell_column):
+def do_transactions(ticker_name, ticker_data, buy_columns, sell_column, transaction_stat, stock_growth):
     try:
-        transactions, profit = start_transactions(ticker_data, ticker_name, buy_columns, sell_column)
-        transactions_stat = summarise_transactions(transactions)
-
         # Remove .NS from the ticker name
         if ticker_name.endswith('.NS'):
             ticker_name = ticker_name[:-3]
-         
-        transactions_summary = {
-            'Date': ticker_data.index[-1],
-            'Stock': ticker_name, 
-            'Profit': round(profit, 2), 
-            'BuyColumns': ",".join(buy_columns), 
-            'SellColumn': sell_column,
-        }
-        transactions_summary |= transactions_stat
 
-        builtins.logging.info(f"Transactions summary={transactions_summary}, Transactions={[str(t) for t in transactions]}")
-        return transactions_summary, transactions
+        # stock_growth, total_profit & winrate is in percentage
+        transaction_stat = {
+            'open_position': False,
+            'Date': ticker_data.index[-1],
+            'BuyColumns': None,
+            'SellColumn': 'atrSellSignal',
+            'Stock': ticker_name,
+            'Profit': 0,
+            'Stock Growth': stock_growth,
+            'Wins': 0,
+            'Losses': 0,
+            'Entries': 0,
+            'Exits': 0,
+            'Winrate': 0,
+            'Profit/StockGrowth': 0,
+        }
+
+        transactions = start_transactions(ticker_data, ticker_name, buy_columns, sell_column)
+        # transactions_stat = summarise_transactions(transactions)
+        
+         
+
+        builtins.logging.info(f"Transactions stat={transaction_stat}, Transactions={[str(t) for t in transactions]}")
+        return transaction_stat, transactions
 
     except Exception as e:
         print(f"Error occured in while getting transaction stats. ticker={ticker_name}, error={e}")        
         builtins.logging.exception(f"Error occured in while getting transaction stats. ticker={ticker_name}, error={e}")        
         
-def find_best_atr_combination(data, ticker, atr_sensitivity_range, atr_period_range):
-    max_profit = -float('inf')
-    best_combination = (0, 0)
-
-    for sensitivity in range(atr_sensitivity_range[0], atr_sensitivity_range[1]):
-        for period in range(atr_period_range[0], atr_period_range[1]):
-            atr_column = calculate_atr_trailing_stop(data, sensitivity, period)
-            atr_buy_column, atr_sell_column = calculate_atr_buy_sell_signal(data)
-
-            _, profit = start_transactions(data, ticker, atr_buy_column, atr_sell_column)
-            if profit > max_profit:
-                max_profit = profit
-                best_combination = (sensitivity, period)
-                print(
-                    f"Intermediate: best_combination={best_combination}, best profit={max_profit}"
-                )
-
-    return best_combination, max_profit
-
 def get_profit_column_name(buy_columns):
     return "profit_"+"_".join(buy_columns)
 
-def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=1000):
+def start_transactions(df_ticker, symbol, buy_columns_combinations, sell_column, initial_captital=1000):
     """
     Calculate profit based on buy and sell signals.
     
@@ -142,52 +133,66 @@ def start_transactions(data, symbol, buy_columns, sell_column, initial_captital=
         The total profit calculated from the buy and sell signals.
     """
     try:
+        df_with_profit_cols = pd.DataFrame(df_ticker)
+
         buy_price = None
         balance = initial_captital
         transaction = None
-        transactions = []
+        open_positions = {
+            # profit_col: Transaction
+        }
 
-        profit_column = get_profit_column_name(buy_columns)
-        data[profit_column] = None
+        profit_till_date = {
+            # profit_col: float
+        }
 
+        for buy_cols_combination in buy_columns_combinations:
+            profit_column = get_profit_column_name(buy_cols_combination)
+            df_with_profit_cols[profit_column] = None
+        
         profit_till_date = 0
+        
+        # service.calculate_summarised_profit(transaction_stat, row)
 
-        for i in range(len(data)):
-            # Check for a buy signal and remember the transaction
-            if all(data[col][i] for col in buy_columns) and transaction is None:
-                buy_price = data['Close'][i]
-                buy_quantity = balance / buy_price
-                transaction = Transaction(symbol, buy_quantity, buy_price, data.index[i])
+        for i, row in df_with_profit_cols.iterrows():
+            for buy_cols_combination in buy_columns_combinations:
+                # Check if all the columns in buy_cols_combination is true
+                # And there is no open position for the buy_cols_combination
+                # Only then open a position against the buy_cols_combination
+                open_transaction = open_positions.get(get_profit_column_name(buy_cols_combination))
 
-            # Check for a sell signal, calculate profit if a buy price is set, and reset transaction
-            if data[sell_column][i] and transaction is not None:
-                sell_price = data['Close'][i]
-                profit = transaction.end(sell_price, data.index[i])
+                if all(df_with_profit_cols[col][i] for col in buy_cols_combination) \
+                    and (open_transaction is None or not open_transaction.is_active()):
 
-                profit_till_date += transaction.profit
-                
-                transactions.append(transaction)
-                transaction = None
-            
+                    buy_price = df_with_profit_cols['Close'][i]
+                    buy_quantity = balance / buy_price
 
-            if transactions:
-                data.iloc[i, data.columns.get_loc(profit_column)] = profit_till_date
-            else:
-                data.iloc[i, data.columns.get_loc(profit_column)] = 0
+                    # Open a position against the buy_cols_combination
+                    open_positions[get_profit_column_name(buy_cols_combination)] = Transaction(symbol, buy_quantity, buy_price, df_with_profit_cols.index[i])
+
+            # Check for a sell signal, calculate profit if a buy price is set, and reset transaction against the buy_cols_combination
+            if df_with_profit_cols[sell_column][i]:
+                for profit_column, transaction in open_positions.items():
+                    sell_price = df_with_profit_cols['Close'][i]
+                    transaction.end(sell_price, df_with_profit_cols.index[i])
+
+                    profit_till_date += transaction.profit
+                    df_with_profit_cols.iloc[i, df_with_profit_cols.columns.get_loc(profit_column)] = profit_till_date
 
         
-        return transactions, profit_till_date
+        return df_with_profit_cols
 
     except Exception as fault:
         print(f"Error occured while starting transactions. error={fault}")
         traceback.print_exc()
 
-def calculate_most_profitable_buy_combination(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations):
+def get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations):
     # stock_growth, total_profit & winrate is in percentage    
     transaction_stat = {
         'open_position': False,
-        'buy_columns_combinations': None,
         'Date': ticker_data.index[-1],
+        'BuyColumns': None,
+        'SellColumn': 'atrSellSignal',
         'Stock': ticker_name,
         'Profit': 0,
         'Stock Growth': stock_growth,
@@ -196,22 +201,43 @@ def calculate_most_profitable_buy_combination(ticker_name, stock_growth, ticker_
         'Entries': 0,
         'Exits': 0,
         'Winrate': 0,
+        'Profit/StockGrowth': 0,
     }
 
-    for buy_cols_combination in buy_columns_combinations:
-        # It will populate ticke_data with profit_indicator columns
-        _, transactions = get_transactions_summary(
-            ticker_name,
-            ticker_data,
-            buy_cols_combination,
-            sell_column,
-        )
+    futures = []
+
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+    #     futures.extend(
+    #         executor.submit(
+    #             get_transactions_summary,
+    #             ticker_name,
+    #             ticker_data,
+    #             buy_cols_combination,
+    #             sell_column,
+    #         )
+    #         for buy_cols_combination in buy_columns_combinations
+    #     )
+    
+    do_transactions(ticker_name, ticker_data, buy_columns_combinations, sell_column, transaction_stat, stock_growth)
+                
+    
+    # for future in concurrent.futures.as_completed(futures):
+    #     df_with_profit_cols = future.result()
+
+    # for buy_cols_combination in buy_columns_combinations:
+    #     # It will populate ticke_data with profit_indicator columns
+    #     _, transactions = get_transactions_summary(
+    #         ticker_name,
+    #         ticker_data,
+    #         buy_cols_combination,
+    #         sell_column,
+    #     )
 
     # ticker_data.to_csv(r"C:\Users\mrina\OneDrive\Documents\projects\UTBotStochasticRsi\python\output\dummy.csv")
     
-    # Apply the function to create the summarised_profit column
-    for index, row in ticker_data.iterrows():
-        service.calculate_summarised_profit(transaction_stat, row)
+    # Populate transaction_stat
+    # for index, row in df_with_profit_cols.iterrows():
+    #     service.calculate_summarised_profit(transaction_stat, row)
 
     builtins.logging.info(f"Ticker Name: {ticker_name}, Best transactions_stat: {transaction_stat}")
 
