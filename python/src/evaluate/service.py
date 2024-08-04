@@ -34,7 +34,7 @@ def calculate_summarised_profit(transaction, row):
     # Only take trade when not in trade already
     if not transaction['open_position']:
         for signal_cols, profit_col in zip(signal_columns, profit_columns):
-            if row[profit_col] > max_profit:
+            if row[profit_col] and row[profit_col] > max_profit:
                 max_profit = row[profit_col]
                 best_signal_column_combination = signal_cols
                 transaction['BuyColumns'] = signal_cols

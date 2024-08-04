@@ -42,7 +42,7 @@ import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 from lib.data_fetcher import get_tickers_data, get_nifty_stock_names, is_favourite_stock
-from lib.indicator_evaluation import do_transactions, calculate_stock_growth, get_best_strategy_stats
+from lib.indicator_evaluation import calculate_stock_growth, get_best_strategy_stats
 from lib.buy_sell import calculate_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
 from lib.util import date_util, csv_util
@@ -55,24 +55,6 @@ def init_log(suffix):
     
     builtins.logging.info(f"Initializing log for suffix={suffix} log_file_name={log_file_name}")
 
-def create_threads_to_do_transactions(ticker_name, ticker_data, sell_column, buy_columns_combinations):
-    ticker_data = ticker_data.copy(deep=True)
-    futures = []
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        futures.extend(
-            executor.submit(
-                do_transactions,
-                ticker_name,
-                ticker_data,
-                buy_cols_combination,
-                sell_column,
-            )
-            for buy_cols_combination in buy_columns_combinations
-        )
-    print(f"Created threads to do transactions on all the buy columns combinations for ticker={ticker_name}")
-    return futures
-
 def pre_populate_indicators(ticker_df):
     # Calculating ATR trailing stop loss
     atr_column = calculate_atr_trailing_stop(ticker_df)
@@ -81,11 +63,6 @@ def process_stocks(args):
     print("Starting to maximise stocks profit...")
 
     backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
-    
-    df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_buy = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
-    df_exit = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
     
     init_log(ticker_counter)
     builtins.logging.info("Starting to maximise stocks profit...")
@@ -123,6 +100,11 @@ def process_stocks(args):
     return df_profit, df_favourite, df_buy, df_exit
 
 def create_output_dataframes(manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat):
+    df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
+    df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
+    df_buy = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+    df_exit = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+
     best_transactions_stat.pop('open_position', None)
     best_transactions_stat.pop('profit_column', None)
 
