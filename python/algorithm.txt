@@ -28,3 +28,12 @@ multiprocessing without threading
 345 seconds
 
 multiprocessing with threading
+
+# todo
+1. add command line argument for a stock to test. It will remove multiprocessing
+2. use apply to find the best strategy stat
+3. fix namenclature of methods
+4. Improve logs
+5. spmlinfra - why atrSellSignal didn't indicate on 5 Aug 24
+6. Create proper models instead of just usig dict everywhere
+7. make sure the objects are minimal and doesn't hold more than one responsibility and the same goes for a method also.
