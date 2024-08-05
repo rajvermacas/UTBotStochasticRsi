@@ -25,7 +25,7 @@ signal_columns = [
 def get_profit_column_name(signal_columns):
     return "profit_"+"_".join(signal_columns)
 
-def calculate_summarised_profit(transaction, row):
+def find_best_strategy_stat(transaction, index, df):
     sell_column = 'atrSellSignal'
 
     max_profit = 0
@@ -34,14 +34,14 @@ def calculate_summarised_profit(transaction, row):
     # Only take trade when not in trade already
     if not transaction['open_position']:
         for signal_cols, profit_col in zip(signal_columns, profit_columns):
-            if row[profit_col] and row[profit_col] > max_profit:
-                max_profit = row[profit_col]
+            if df.loc[index, profit_col] and df.loc[index, profit_col] > max_profit:
+                max_profit = df.loc[index, profit_col]
                 best_signal_column_combination = signal_cols
                 transaction['BuyColumns'] = signal_cols
 
         # Check if the most profitable strategy is giving a buy signal
         if best_signal_column_combination and all(
-            row[signal_col] for signal_col in best_signal_column_combination
+            df.loc[index, signal_col] for signal_col in best_signal_column_combination
         ):
             transaction['open_position'] = True
             transaction['profit_column'] = get_profit_column_name(best_signal_column_combination)
@@ -49,23 +49,26 @@ def calculate_summarised_profit(transaction, row):
             # print(f"Opening position. strategy={transaction['profit_column']} date of purchase={row['Date']}")
 
     # If there is a sell siganl, book profit
-    if transaction['open_position'] and row[sell_column]:
-        return _populate_transaction(transaction, row)
+    if transaction['open_position'] and df.loc[index, sell_column]:
+        profit = df.loc[index, transaction['profit_column']]
+        _populate_transaction(transaction, profit)
+
+        return {
+            
+        }
     
     # If profit is not booked then return None
     return None
 
 
-def _populate_transaction(transaction, row):
+def _populate_transaction(transaction, profit):
     transaction['open_position'] = False
 
-    result = row[transaction['profit_column']]
-
     transaction['Exits'] = transaction.get('Exits', 0) + 1
-    transaction['Wins'] = transaction.get('Wins', 0) + (result > transaction['Profit'])
-    transaction['Losses'] = transaction.get('Losses', 0) + (result < transaction['Profit'])
+    transaction['Wins'] = transaction.get('Wins', 0) + (profit > transaction['Profit'])
+    transaction['Losses'] = transaction.get('Losses', 0) + (profit < transaction['Profit'])
 
-    transaction['Profit'] = round(result, 2)
+    transaction['Profit'] = round(profit, 2)
     transaction['Winrate'] = round((transaction['Wins'] / transaction['Exits']) * 100, 2)
 
     if transaction['Stock Growth'] < 0 and transaction['Profit'] < 0:
@@ -73,4 +76,4 @@ def _populate_transaction(transaction, row):
     else:
         transaction['Profit/StockGrowth'] = round(transaction['Profit'] / transaction['Stock Growth'], 2)
 
-    return result
+    return profit

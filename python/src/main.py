@@ -69,6 +69,12 @@ def process_stocks(args):
     
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
+    df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
+    df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
+    df_buy = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+    df_exit = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+
+    processed_count = 0
     # Iterate over each stock
     for ticker_name, ticker_data in tickers_data.items():
         try:
@@ -81,8 +87,12 @@ def process_stocks(args):
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
 
             best_transactions_stat = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
+            
+            args = (manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, df_profit, df_favourite, df_buy, df_exit)
+            df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(args)
 
-            df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat)
+            processed_count += 1
+            print(f"Process id={ticker_counter} Processed stock={ticker_name}. Completed={processed_count}/{len(ticker_names)}")
                 
         except Exception as e:
             print(f"Error occured in maximising stock profit. ticker={ticker_name}. error={e}")
@@ -99,11 +109,8 @@ def process_stocks(args):
     
     return df_profit, df_favourite, df_buy, df_exit
 
-def create_output_dataframes(manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat):
-    df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_buy = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
-    df_exit = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+def create_output_dataframes(args):
+    manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, df_profit, df_favourite, df_buy, df_exit = args
 
     best_transactions_stat.pop('open_position', None)
     best_transactions_stat.pop('profit_column', None)
@@ -145,41 +152,10 @@ def create_output_dataframes(manual_favourite_stocks, ticker_name, ticker_data, 
                         ignore_index=True
                     )
             
-    return df_profit,df_favourite,df_buy,df_exit
+    return df_profit, df_favourite, df_buy, df_exit
   
 
-if __name__ == "__main__":
-    _start_time = time.time()
-    init_log("main")
-    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
-
-    # Only for testing purpose
-    # backtest_end_date = "2024-05-25"
-
-    # Only for testing purpose
-    ticker_names = ["ESAFSFB.NS", "^NSEI"]
-    # ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
-
-    df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-    df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-
-    df_manual_favourite_stocks = pd.read_csv(os.path.join(os.getenv("INPUT_DIR"), "manual_favourite.csv"))
-    manual_favourite_stocks = set(df_manual_favourite_stocks['Stock'])
-
-    page_size = 50
-    params = []
-    results = []
-    for i in range(0, len(ticker_names), page_size):                    
-        ticker_names_page = ticker_names[i:i+page_size]        
-        params.append((backtest_start_date, backtest_end_date, i, ticker_names_page, manual_favourite_stocks))
-
-        # Only for testing purpose
-        results.append(process_stocks(params[-1]))
-
-    # with Pool(8) as p:
-    #     results = p.map(process_stocks, params)
-
-    # Initialize empty DataFrames to concatenate results
+def create_output_csv(results):
     final_df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
     final_df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
     final_df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
@@ -196,6 +172,40 @@ if __name__ == "__main__":
     csv_util.create_csv(final_df_favourite, 'Winrate', 'favourite')
     csv_util.create_csv(final_df_buy, 'Winrate', 'buy')
     csv_util.create_csv(final_df_exit, 'Winrate', 'exit')
+
+if __name__ == "__main__":
+    _start_time = time.time()
+    init_log("main")
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
+
+    # Only for testing purpose
+    # backtest_end_date = "2024-05-25"
+
+    # Only for testing purpose
+    ticker_names = ["DIXON.NS", "^NSEI"]
+    # ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
+
+    df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
+    df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
+
+    df_manual_favourite_stocks = pd.read_csv(os.path.join(os.getenv("INPUT_DIR"), "manual_favourite.csv"))
+    manual_favourite_stocks = set(df_manual_favourite_stocks['Stock'])
+
+    page_size = 50
+    params = []
+    results = []
+    for i in range(0, len(ticker_names), page_size):                    
+        ticker_names_page = ticker_names[i:i+page_size]        
+        params.append((backtest_start_date, backtest_end_date, i/50, ticker_names_page, manual_favourite_stocks))
+
+        # Only for testing purpose
+        results.append(process_stocks(params[-1]))
+
+    # with Pool(8) as p:
+    #     results = p.map(process_stocks, params)
+
+    # Initialize empty DataFrames to concatenate results
+    create_output_csv(results)
 
     print("Time taken: ", round(time.time() - _start_time, 2))
 
