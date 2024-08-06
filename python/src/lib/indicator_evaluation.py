@@ -154,16 +154,20 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
         profit_column = get_profit_column_name(buy_cols_combination)
         df_with_profit_cols[profit_column] = None
         
-    for index, row in df_with_profit_cols.iterrows():
+    def process_row(row):
+        index = row.name
         open_long_position(ticker_name, buy_columns_combinations, row, params.CAPITAL, open_positions, index)
 
-            # Check for a sell signal, calculate profit if a buy price is set, and reset transaction against the buy_cols_combination
         if row[sell_column]:
             close_long_position(ticker_name, row, open_positions, profit_perc_till_date, index)
-            
+        
         for buy_cols_combination in buy_columns_combinations:
             profit_column = get_profit_column_name(buy_cols_combination)
-            df_with_profit_cols.loc[index, profit_column] = profit_perc_till_date.get(profit_column, 0)
+            row[profit_column] = profit_perc_till_date.get(profit_column, 0)
+        
+        return row
+
+    df_with_profit_cols = df_with_profit_cols.apply(process_row, axis=1)
 
     return df_with_profit_cols
 

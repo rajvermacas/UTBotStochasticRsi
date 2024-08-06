@@ -183,8 +183,8 @@ if __name__ == "__main__":
     # backtest_end_date = "2024-05-25"
 
     # Only for testing purpose
-    # ticker_names = ["DIXON.NS", "^NSEI"]
-    ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
+    ticker_names = ["UNITECH.NS", "^NSEI"]
+    # ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
 
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
@@ -200,11 +200,11 @@ if __name__ == "__main__":
         params.append((backtest_start_date, backtest_end_date, math.ceil(i/50), ticker_names_page, manual_favourite_stocks))
 
         # Only for testing purpose
-        # results.append(process_stocks(params[-1]))
+        results.append(process_stocks(params[-1]))
 
     # Spawn child processes
-    with Pool(8) as p:
-        results = p.map(process_stocks, params)
+    # with Pool(8) as p:
+    #     results = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
     create_output_csv(results)

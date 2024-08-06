@@ -54,7 +54,7 @@ def find_best_strategy_stat(args, row):
             transactions_summary['Entries'] = transactions_summary.get('Entries', 0) + 1
             transactions_summary['BuyDate'] = row.name
 
-            buy_quantity = row['Close']/params.CAPITAL
+            buy_quantity = params.CAPITAL/row['Close']
             transactions_summary['TradeHistory'].append(
                 Transaction(ticker_name, buy_quantity, row['Close'], row.name, transactions_summary['BuyColumns'])
             )
