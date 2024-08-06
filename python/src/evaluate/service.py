@@ -69,13 +69,14 @@ def _populate_transactions_summary(transactions_summary, row):
     transaction = transactions_summary['TradeHistory'][-1]
     transaction.end(row['Close'], row.name)
 
-    profit = row[transactions_summary['profit_column']]
+    # profit = row[transactions_summary['profit_column']]
+    profit_perc = transaction.profit_perc
 
     transactions_summary['open_position'] = False
     transactions_summary['Exits'] = transactions_summary.get('Exits', 0) + 1
-    transactions_summary['Wins'] = transactions_summary.get('Wins', 0) + (profit > transactions_summary['Profit'])
-    transactions_summary['Losses'] = transactions_summary.get('Losses', 0) + (profit < transactions_summary['Profit'])
-    transactions_summary['Profit'] = round(profit, 2)
+    transactions_summary['Wins'] = transactions_summary.get('Wins', 0) + (profit_perc > transactions_summary['Profit'])
+    transactions_summary['Losses'] = transactions_summary.get('Losses', 0) + (profit_perc < transactions_summary['Profit'])
+    transactions_summary['Profit'] = transactions_summary.get('Profit', 0) + round(profit_perc, 2)
     transactions_summary['Winrate'] = round((transactions_summary['Wins'] / transactions_summary['Exits']) * 100, 2)
 
     if transactions_summary['Stock Growth'] < 0 and transactions_summary['Profit'] < 0:
@@ -90,6 +91,3 @@ def _populate_transactions_summary(transactions_summary, row):
     #     'ProfitPerc': round(transactions_summary['Profit'], 2),
     #     'BuyColumns': transactions_summary['BuyColumns'],
     # })
-    
-
-    return profit

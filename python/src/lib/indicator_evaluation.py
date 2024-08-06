@@ -117,7 +117,7 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
         args = (transactions_summary, buy_columns_combinations, ticker_name)
         df_profit_cols.apply(partial(service.find_best_strategy_stat, args), axis=1)
         
-        print(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in transactions_summary['TradeHistory']]}")
+        # print(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in transactions_summary['TradeHistory']]}")
         builtins.logging.info(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in transactions_summary['TradeHistory']]}")
         df_profit_cols.to_csv(r"C:\Users\mrina\OneDrive\Documents\projects\UTBotStochasticRsi\python\output\test.csv")
         
@@ -175,7 +175,7 @@ def close_long_position(ticker_name, row, open_positions, profit_perc_till_date,
             transaction.end(sell_price, index)
 
             profit_perc_till_date[profit_column] = profit_perc_till_date.get(profit_column, 0) + transaction.profit_perc
-            print(f"Closing position. stock={ticker_name} profit={transaction.profit_perc} strategy={profit_column} date of purchase={index}")
+            # print(f"Closing position. stock={ticker_name} profit={transaction.profit_perc} strategy={profit_column} date of purchase={index}")
 
 def open_long_position(ticker_name, buy_columns_combinations, row, balance, open_positions, index):
     for buy_cols_combination in buy_columns_combinations:
@@ -192,7 +192,7 @@ def open_long_position(ticker_name, buy_columns_combinations, row, balance, open
             # Open a position against the buy_cols_combination
             open_positions[get_profit_column_name(buy_cols_combination)] = Transaction(ticker_name, buy_quantity, buy_price, index, buy_cols_combination)
 
-            print(f"Opening position. stock={ticker_name} strategy={get_profit_column_name(buy_cols_combination)} date of purchase={index}")
+            # print(f"Opening position. stock={ticker_name} strategy={get_profit_column_name(buy_cols_combination)} date of purchase={index}")
 
 def calculate_sharpe_ratio(returns, risk_free_rate=0.05):
     """
