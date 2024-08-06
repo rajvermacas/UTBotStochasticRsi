@@ -37,3 +37,4 @@ multiprocessing with threading
 5. spmlinfra - why atrSellSignal didn't indicate on 5 Aug 24
 6. Create proper models instead of just usig dict everywhere
 7. make sure the objects are minimal and doesn't hold more than one responsibility and the same goes for a method also.
+8. add transaction history

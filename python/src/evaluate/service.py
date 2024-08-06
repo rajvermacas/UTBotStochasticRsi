@@ -46,6 +46,8 @@ def find_best_strategy_stat(transaction, index, df):
             transaction['open_position'] = True
             transaction['profit_column'] = get_profit_column_name(best_signal_column_combination)
             transaction['Entries'] = transaction.get('Entries', 0) + 1
+            transaction['BuyDate'] = index
+
             # print(f"Opening position. strategy={transaction['profit_column']} date of purchase={row['Date']}")
 
     # If there is a sell siganl, book profit
@@ -54,7 +56,11 @@ def find_best_strategy_stat(transaction, index, df):
         _populate_transaction(transaction, profit)
 
         return {
-            
+            'Stock': transaction['Stock'],
+            'BuyDate': transaction['BuyDate'].strftime('%Y-%m-%d'),
+            'SellDate': index.strftime('%Y-%m-%d'),
+            'ProfitPerc': round(transaction['Profit'], 2),
+            'BuyColumns': transaction['BuyColumns'],
         }
     
     # If profit is not booked then return None

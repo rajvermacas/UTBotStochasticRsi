@@ -132,15 +132,7 @@ def start_transactions(df_ticker, ticker_name, buy_columns_combinations, sell_co
             'Exits': 0,
             'Winrate': 0,
             'Profit/StockGrowth': 0,
-            # todo Populate transaction history from inside find_best_strategy_stat when booking profit
-            'transaction_history': [
-                # {
-                #     'BuyDate': None,
-                #     'SellDate': None,
-                #     'ProfitPerc': 0,
-                #     'BuyColumns': "",
-                # }
-            ]
+            'BuyDate': None,
         }
 
         df_with_profit_cols = pd.DataFrame(df_ticker)
@@ -172,8 +164,12 @@ def start_transactions(df_ticker, ticker_name, buy_columns_combinations, sell_co
             
             # todo: Take it out of the iterrows loop and use df.apply and restore original evaluate service and check time taken
             if trade := service.find_best_strategy_stat(transaction_stat, index, df_with_profit_cols):
+                if trade_history:
+                    trade['ProfitPerc'] -= trade_history[-1]['ProfitPerc']
+                
                 trade_history.append(trade)
         
+        print(f"Stock={ticker_name} Trade history={trade_history}")
         df_with_profit_cols.to_csv(r"C:\Users\mrina\OneDrive\Documents\projects\UTBotStochasticRsi\python\output\test.csv")
         
         return transaction_stat
