@@ -36,6 +36,7 @@ import builtins
 from multiprocessing import Pool
 from lib.buy_sell import is_today_buy_stock, is_today_exit_stock
 from datetime import datetime, timedelta
+import math
 
 
 import warnings
@@ -115,7 +116,7 @@ def create_output_dataframes(args):
     best_transactions_stat.pop('open_position', None)
     best_transactions_stat.pop('profit_column', None)
 
-    profit_transaction_stat = {k:v for k,v in best_transactions_stat.items() if k not in ['BuyColumns', 'SellColumn']}
+    profit_transaction_stat = {k:v for k,v in best_transactions_stat.items() if k not in ['BuyColumns', 'SellColumn', 'TradeHistory', 'BuyDate']}
 
     df_profit = pd.concat(
                 [
@@ -196,7 +197,7 @@ if __name__ == "__main__":
     results = []
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
-        params.append((backtest_start_date, backtest_end_date, i/50, ticker_names_page, manual_favourite_stocks))
+        params.append((backtest_start_date, backtest_end_date, math.ceil(i/50), ticker_names_page, manual_favourite_stocks))
 
         # Only for testing purpose
         results.append(process_stocks(params[-1]))
