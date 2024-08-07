@@ -37,7 +37,7 @@ from multiprocessing import Pool
 from lib.buy_sell import is_today_buy_stock, is_today_exit_stock
 from datetime import datetime, timedelta
 import math
-
+import argparse
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -175,16 +175,29 @@ def create_output_csv(results):
     csv_util.create_csv(final_df_exit, 'Winrate', 'exit')
 
 if __name__ == "__main__":
+
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Stock analysis script")
+    parser.add_argument('--test', action='store_true', help='Run in test mode')
+    args = parser.parse_args()
+
+    # Check if running in test mode
+    if args.test:
+        print("Running in test mode")
+        # Test mode configurations
+        # Only for testing purpose
+        # backtest_end_date = "2024-05-25"
+
+        ticker_names = ["UNITECH.NS", "^NSEI"]
+        backtest_end_date = "2024-05-25"
+    else:
+        print("Running in normal mode")
+        # Normal mode configurations
+        ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
+
     _start_time = time.time()
     init_log("main")
     backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
-
-    # Only for testing purpose
-    # backtest_end_date = "2024-05-25"
-
-    # Only for testing purpose
-    ticker_names = ["UNITECH.NS", "^NSEI"]
-    # ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
 
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
@@ -194,20 +207,20 @@ if __name__ == "__main__":
 
     page_size = 50
     params = []
-    results = []
+    result_dataframes = []
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
         params.append((backtest_start_date, backtest_end_date, math.ceil(i/50), ticker_names_page, manual_favourite_stocks))
 
-        # Only for testing purpose
-        results.append(process_stocks(params[-1]))
-
-    # Spawn child processes
-    # with Pool(8) as p:
-    #     results = p.map(process_stocks, params)
+    if args.test:
+        result_dataframes.append(process_stocks(params[-1]))
+    else:
+        print("Spawning process for page ", math.ceil(i/50))
+        with Pool(8) as p:
+            results = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
-    create_output_csv(results)
+    create_output_csv(result_dataframes)
 
     print("Time taken: ", round(time.time() - _start_time, 2))
 
