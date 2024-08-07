@@ -74,20 +74,12 @@ def _populate_transactions_summary(transactions_summary, row):
 
     transactions_summary['open_position'] = False
     transactions_summary['Exits'] = transactions_summary.get('Exits', 0) + 1
-    transactions_summary['Wins'] = transactions_summary.get('Wins', 0) + (profit_perc > transactions_summary['Profit'])
-    transactions_summary['Losses'] = transactions_summary.get('Losses', 0) + (profit_perc < transactions_summary['Profit'])
-    transactions_summary['Profit'] = transactions_summary.get('Profit', 0) + round(profit_perc, 2)
+    transactions_summary['Wins'] = transactions_summary.get('Wins', 0) + (profit_perc > 0)
+    transactions_summary['Losses'] = transactions_summary.get('Losses', 0) + (profit_perc < 0)
+    transactions_summary['Profit'] = round(transactions_summary.get('Profit', 0) + profit_perc, 2)
     transactions_summary['Winrate'] = round((transactions_summary['Wins'] / transactions_summary['Exits']) * 100, 2)
 
     if transactions_summary['Stock Growth'] < 0 and transactions_summary['Profit'] < 0:
         transactions_summary['Profit/StockGrowth'] = -round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
     else:
         transactions_summary['Profit/StockGrowth'] = round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
-    
-    # transactions_summary['TradeHistory'].append({
-    #     'Stock': transactions_summary['Stock'],
-    #     'BuyDate': transactions_summary['BuyDate'].strftime('%Y-%m-%d'),
-    #     'SellDate': row.name.strftime('%Y-%m-%d'),
-    #     'ProfitPerc': round(transactions_summary['Profit'], 2),
-    #     'BuyColumns': transactions_summary['BuyColumns'],
-    # })
