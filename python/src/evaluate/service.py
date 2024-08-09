@@ -27,59 +27,75 @@ from lib import params
 def get_profit_column_name(signal_columns):
     return "profit_"+"_".join(signal_columns)
 
-def find_best_strategy_stat(args, row):
-    transactions_summary, buy_cols_combinations, ticker_name = args
+def find_best_transactions(args, row):
+    curr_strategy_state, buy_cols_combinations, ticker_name = args
     sell_column = 'atrSellSignal'
 
     max_profit = 0
     best_signal_column_combination = None
 
     # Only take trade when not in trade already
-    if not transactions_summary['open_position']:
+    if not curr_strategy_state['open_position']:
         for signal_cols in buy_cols_combinations:
             profit_col = get_profit_column_name(signal_cols)
 
             if row[profit_col] and row[profit_col] > max_profit:
                 max_profit = row[profit_col]
                 best_signal_column_combination = signal_cols
-                transactions_summary['BuyColumns'] = signal_cols
+                curr_strategy_state['buy_columns'] = signal_cols
 
         # Check if the most profitable strategy is giving a buy signal
         if best_signal_column_combination and all(
             row[signal_col] for signal_col in best_signal_column_combination
         ):
             # Open position
-            transactions_summary['open_position'] = True
-            transactions_summary['profit_column'] = get_profit_column_name(best_signal_column_combination)
-            transactions_summary['Entries'] = transactions_summary.get('Entries', 0) + 1
-            transactions_summary['BuyDate'] = row.name
+            curr_strategy_state['open_position'] = True
 
             buy_quantity = params.CAPITAL/row['Close']
-            transactions_summary['TradeHistory'].append(
-                Transaction(ticker_name, buy_quantity, row['Close'], row.name, transactions_summary['BuyColumns'])
+            curr_strategy_state['trade_history'].append(
+                Transaction(ticker_name, buy_quantity, row['Close'], row.name, curr_strategy_state['buy_columns'])
             )
 
-            # print(f"Opening position. strategy={transactions_summary['profit_column']} date of purchase={row['Date']}")
-
     # If there is a sell siganl, book profit
-    if transactions_summary['open_position'] and row[sell_column]:
-        _populate_transactions_summary(transactions_summary, row)
+    if curr_strategy_state['open_position'] and row[sell_column]:
+        transaction = curr_strategy_state['trade_history'][-1]
+        transaction.end(row['Close'], row.name)
+        curr_strategy_state['open_position'] = False
+
     
-def _populate_transactions_summary(transactions_summary, row):
-    transaction = transactions_summary['TradeHistory'][-1]
-    transaction.end(row['Close'], row.name)
+def summarise_transactions(transactions):
+    wins = 0
+    losses = 0
+    entries = 0
+    exits = 0
+    profit_and_loss = 0
+    profit_perc = 0
 
-    # profit = row[transactions_summary['profit_column']]
-    profit_perc = transaction.profit_perc
+    for transaction in transactions:
+        if transaction.sell_price > transaction.buy_price:
+            wins += 1
+        else:
+            losses += 1
 
-    transactions_summary['open_position'] = False
-    transactions_summary['Exits'] = transactions_summary.get('Exits', 0) + 1
-    transactions_summary['Wins'] = transactions_summary.get('Wins', 0) + (profit_perc > 0)
-    transactions_summary['Losses'] = transactions_summary.get('Losses', 0) + (profit_perc < 0)
-    transactions_summary['Profit'] = round(transactions_summary.get('Profit', 0) + profit_perc, 2)
-    transactions_summary['Winrate'] = round((transactions_summary['Wins'] / transactions_summary['Exits']) * 100, 2)
+        entries += 1
+        exits += 1
+        profit_perc += transaction.profit_perc
 
-    if transactions_summary['Stock Growth'] < 0 and transactions_summary['Profit'] < 0:
-        transactions_summary['Profit/StockGrowth'] = -round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
-    else:
-        transactions_summary['Profit/StockGrowth'] = round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
+    winrate = 0
+    if entries > 0:
+        winrate = round((wins / entries) * 100, 2)
+
+    profit_and_loss = 0
+    if exits > 0:
+        profit_and_loss = round((wins - losses) / exits, 2)
+
+    return {
+        'Wins': wins,
+        'Losses': losses,
+        'Entries': entries,
+        'Exits': exits,
+        'Winrate': winrate,
+        'Profit/StockGrowth': profit_and_loss,
+        'Profit': round(profit_perc, 2),
+    }
+    

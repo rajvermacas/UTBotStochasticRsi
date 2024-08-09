@@ -47,6 +47,7 @@ from lib.indicator_evaluation import calculate_stock_growth, get_best_strategy_s
 from lib.buy_sell import calculate_buy_sell_signals, get_buy_columns_combinations
 from lib.indicators import calculate_atr_trailing_stop
 from lib.util import date_util, csv_util
+import lib.params as app_params
 
 
 def init_log(suffix):
@@ -181,6 +182,8 @@ if __name__ == "__main__":
     parser.add_argument('--test', action='store_true', help='Run in test mode')
     args = parser.parse_args()
 
+    os.environ['EXECUTION_MODE'] = app_params.EXECUTION_MODE_TEST if args.test else app_params.EXECUTION_MODE_NORMAL
+
     # Check if running in test mode
     if args.test:
         print("Running in test mode")
@@ -205,13 +208,16 @@ if __name__ == "__main__":
     df_manual_favourite_stocks = pd.read_csv(os.path.join(os.getenv("INPUT_DIR"), "manual_favourite.csv"))
     manual_favourite_stocks = set(df_manual_favourite_stocks['Stock'])
 
-    page_size = 50
+    page_size = app_params.TICKER_PAGE_SIZE
     params = []
     result_dataframes = []
+
+    # Create actual argument for process_stocks
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
         params.append((backtest_start_date, backtest_end_date, math.ceil(i/50), ticker_names_page, manual_favourite_stocks))
 
+    # Run process_stocks in parallel
     if args.test:
         result_dataframes.append(process_stocks(params[-1]))
     else:

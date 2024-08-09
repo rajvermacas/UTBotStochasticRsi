@@ -14,6 +14,8 @@ from lib import params
 from evaluate import service
 import traceback
 from functools import partial
+import os
+import params as app_params
 
 
 def calculate_max_drawdown(transactions):
@@ -65,6 +67,15 @@ def calculate_stock_growth(data, start_date, end_date):
         return None
 
 def summarise_transactions(transactions):
+    """
+    Summarise a list of transactions into key statistics.
+
+    Parameters:
+    transactions (list): A list of transaction objects.
+
+    Returns:
+    dict: A dictionary containing the number of wins, losses, entries, exits, winrate, Sharpe ratio, and skewness.
+    """
     wins = sum(t.profit and t.profit > 0 for t in transactions)
     losses = sum(t.profit and t.profit < 0 for t in transactions)
     entries = len(transactions)
@@ -90,37 +101,61 @@ def get_profit_column_name(buy_columns):
     return "profit_"+"_".join(buy_columns)
 
 def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, buy_columns_combinations):
+    """
+    This function calculates the best strategy statistics for a given stock.
+    
+    Parameters:
+    ticker_name (str): The name of the stock.
+    stock_growth (float): The growth of the stock.
+    df_ticker (pandas.DataFrame): A DataFrame containing the stock's data.
+    sell_column (str): The column name for selling signals.
+    buy_columns_combinations (list): A list of combinations of column names for buying signals.
+    
+    Returns:
+    dict: A dictionary containing the best strategy statistics, including the stock's name, date, growth, wins, losses, entries, exits, winrate, profit, and profit/stock growth ratio.
+    """
     try:
         df_profit_cols = populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_column)
-            
-        # todo: Take it out of the iterrows loop and use df.apply and restore original evaluate service and check time taken
-        # Profit, stock growth, winrate is in percentage
-        # BuyColumns is a list of signal columns (string)
-        transactions_summary = {
+
+        # Prepare temporary strategy state for function find_best_strategy_stat
+        curr_strategy_state = {
             'open_position': False,
-            'Date': df_ticker.index[-1],
-            'BuyColumns': None,
-            'SellColumn': 'atrSellSignal',
+            'buy_columns': None,
+            'trade_history': [],
+        }
+        
+        args = (curr_strategy_state, buy_columns_combinations, ticker_name)
+        df_profit_cols.apply(partial(service.find_best_transactions, args), axis=1)
+
+        # Profit, stock growth, winrate is in percentage
+        transactions_summary = {
             'Stock': ticker_name,
-            'Profit': 0,
+            'Date': df_ticker.index[-1],
             'Stock Growth': stock_growth,
             'Wins': 0,
             'Losses': 0,
             'Entries': 0,
             'Exits': 0,
             'Winrate': 0,
+            'Profit': 0,
             'Profit/StockGrowth': 0,
-            'BuyDate': None,
-            'TradeHistory': [],
         }
-        
-        args = (transactions_summary, buy_columns_combinations, ticker_name)
-        df_profit_cols.apply(partial(service.find_best_strategy_stat, args), axis=1)
+
+        best_strategy_stat = service.summarise_transactions(curr_strategy_state['trade_history'])
+        transactions_summary.update(best_strategy_stat)
+
+        if transactions_summary['Stock Growth'] < 0 and transactions_summary['Profit'] < 0:
+            transactions_summary['Profit/StockGrowth'] = -round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
+
+        else:
+            transactions_summary['Profit/StockGrowth'] = round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
         
         # print(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in transactions_summary['TradeHistory']]}")
-        builtins.logging.info(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in transactions_summary['TradeHistory']]}")
-        df_profit_cols.to_csv(r"C:\Users\mrina\OneDrive\Documents\projects\UTBotStochasticRsi\python\output\test.csv")
-        
+        builtins.logging.info(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in curr_strategy_state['trade_history']]}")
+
+        if os.environ.get('EXECUTION_MODE') == app_params.EXECUTION_MODE_TEST:
+            df_profit_cols.to_csv(os.path.join(os.getenv("ROOT_DIR"), "test.csv"))
+
         return transactions_summary
 
     except Exception as fault:
@@ -129,6 +164,15 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
 
 def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_column):
     """
+    This function calculates and populates the profit columns for a given ticker.
+
+    It takes in the following parameters:
+    - df_ticker: A pandas DataFrame containing the ticker data.
+    - ticker_name: The name of the ticker.
+    - buy_columns_combinations: A list of combinations of columns to use for buying signals.
+    - sell_column: The column to use for selling signals.
+
+    It returns a pandas DataFrame with the profit columns populated.
     It will add profit_cols i.e. 
     'profit_atrBuySignal',
     'profit_rsiBuySignal',
@@ -140,6 +184,7 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
 
     These columns will contain profit percentage till date
     """
+    
     open_positions = {
         # profit_col: Transaction
     }
@@ -155,6 +200,23 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
         df_with_profit_cols[profit_column] = None
         
     def process_row(row):
+        """
+        Process a single row of data.
+
+        Args:
+            row (pandas.Series): The row of data to process.
+
+        Returns:
+            pandas.Series: The processed row of data.
+
+        This function takes a row of data and performs the following operations:
+        1. It calls the `open_long_position` function with the ticker name, buy columns combinations, the row, the capital, the open positions, and the index.
+        2. It checks if the row contains a sell signal. If it does, it calls the `close_long_position` function with the ticker name, the row, the open positions, the profit percentage till date, and the index.
+        3. It iterates over the buy columns combinations and calculates the profit column name.
+        4. It retrieves the profit percentage for the current row from the `profit_perc_till_date` dictionary.
+        5. It assigns the profit percentage to the corresponding profit column in the row.
+        6. It returns the processed row.
+        """
         index = row.name
         open_long_position(ticker_name, buy_columns_combinations, row, params.CAPITAL, open_positions, index)
 
@@ -172,6 +234,19 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
     return df_with_profit_cols
 
 def close_long_position(ticker_name, row, open_positions, profit_perc_till_date, index):
+    """
+    Closes a long position for the given ticker.
+
+    Args:
+        ticker_name (str): The name of the ticker.
+        row (pandas.Series): The row of data containing the close price.
+        open_positions (dict): A dictionary of open positions.
+        profit_perc_till_date (dict): A dictionary of profit percentages till date.
+        index (Timestamp): The index of the current row i.e the date.
+
+    Returns:
+        None
+    """
     for profit_column, transaction in open_positions.items():
         # If no transaction is active then no need to close position
         if transaction.is_active():
@@ -182,6 +257,25 @@ def close_long_position(ticker_name, row, open_positions, profit_perc_till_date,
             # print(f"Closing position. stock={ticker_name} profit={transaction.profit_perc} strategy={profit_column} date of purchase={index}")
 
 def open_long_position(ticker_name, buy_columns_combinations, row, balance, open_positions, index):
+    """
+    Opens a long position for the given ticker.
+
+    Args:
+        ticker_name (str): The name of the ticker.
+        buy_columns_combinations (list): A list of combinations of buy columns.
+        row (pandas.Series): The row of data containing the necessary information.
+        balance (float): The available balance for trading.
+        open_positions (dict): A dictionary of open positions.
+        index (int): The index of the current row.
+
+    Returns:
+        None
+
+    This function iterates over the buy columns combinations and checks if all the columns in the combination are true.
+    If a combination satisfies this condition and there is no open position for the combination, it opens a position against the combination.
+    The position is opened by creating a Transaction object with the ticker name, buy quantity, buy price, index, and buy columns combination.
+    The Transaction object is then added to the open_positions dictionary using the profit column name as the key.
+    """
     for buy_cols_combination in buy_columns_combinations:
         # Check if all the columns in buy_cols_combination are true
         # And there is no open position for the buy_cols_combination
