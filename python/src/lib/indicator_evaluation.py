@@ -15,7 +15,7 @@ from evaluate import service
 import traceback
 from functools import partial
 import os
-import params as app_params
+import lib.params as app_params
 
 
 def calculate_max_drawdown(transactions):
@@ -156,7 +156,7 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
         if os.environ.get('EXECUTION_MODE') == app_params.EXECUTION_MODE_TEST:
             df_profit_cols.to_csv(os.path.join(os.getenv("ROOT_DIR"), "test.csv"))
 
-        return transactions_summary
+        return transactions_summary, curr_strategy_state['trade_history']
 
     except Exception as fault:
         print(f"Error occured while getting best strategy stats. error={fault}")

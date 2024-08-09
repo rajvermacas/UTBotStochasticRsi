@@ -3,6 +3,7 @@ import ta
 from itertools import combinations
 
 from lib.indicators import calculate_stochastic
+from lib import params as app_params
 
 
 def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
@@ -19,7 +20,7 @@ def calculate_rsi_buy_signal(data, rsi_period=14, ema_period=14):
     data[rsi_buy_column] = (rsi >= 50) & (rsi > ema_rsi) & (ema_rsi > 40) & (data['Close'] >= data['ATR_TS'])
 
     # Generate buy Signal only at the first buy signal after a sell signal
-    sell_column = 'atrSellSignal'
+    sell_column = app_params.ATR_SELL_COLUMN
     buy_signal_generated = False
     for i in range(len(data)):
         if data[sell_column][i] and buy_signal_generated:
@@ -47,7 +48,7 @@ def calculate_stochastic_buy_signal(data):
     data[stochastic_buy_column] = stochasticBuySignal
 
     # Generate buy Signal only at the first buy signal after a sell signal
-    sell_column = 'atrSellSignal'
+    sell_column = app_params.ATR_SELL_COLUMN
     buy_signal_generated = False
     for i in range(len(data)):
         if data[sell_column][i] and buy_signal_generated:
@@ -64,7 +65,7 @@ def calculate_atr_buy_sell_signal(data):
     Ensure this is called after ATR_TS is calculated
     """
     atr_buy_column = 'atrBuySignal'
-    atr_sell_column = 'atrSellSignal'
+    atr_sell_column = app_params.ATR_SELL_COLUMN
     # Assuming 'data' is your DataFrame and it has a 'Close' column
     data['EMA_1'] = ta.trend.ema_indicator(data['Close'], window=1)
 
@@ -113,15 +114,17 @@ def get_buy_columns_combinations(buy_columns):
 
     return all_combinations
 
-def is_today_buy_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
-    ticker_data_last = ticker_data.tail(1)    
-    buy_columns = best_transactions_stat['BuyColumns']
+def is_today_buy_stock(transactions: list, ticker_data: pd.DataFrame) -> bool:
+    ticker_data_last = ticker_data.tail(1)  
 
-    return all(ticker_data_last[col].all() for col in buy_columns)
+    # if buy signal is generated today
+    if transactions and transactions[-1] \
+        and transactions[-1].buy_date.date() == ticker_data_last.index[0].date():
+        return True
+    
+    return False
 
-def is_today_exit_stock(best_transactions_stat: dict, ticker_data: pd.DataFrame) -> bool:
+def is_today_exit_stock(ticker_data: pd.DataFrame) -> bool:
     ticker_data_last = ticker_data.tail(1)
-    exit_column = best_transactions_stat['SellColumn']
-
-    return any(ticker_data_last[exit_column])
+    return any(ticker_data_last[app_params.ATR_SELL_COLUMN])
 

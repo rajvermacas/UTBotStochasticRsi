@@ -22,14 +22,14 @@
 # ]
 
 from lib.models import Transaction
-from lib import params
+from lib import params as app_params
 
 def get_profit_column_name(signal_columns):
     return "profit_"+"_".join(signal_columns)
 
 def find_best_transactions(args, row):
     curr_strategy_state, buy_cols_combinations, ticker_name = args
-    sell_column = 'atrSellSignal'
+    sell_column = app_params.ATR_SELL_COLUMN
 
     max_profit = 0
     best_signal_column_combination = None
@@ -51,7 +51,7 @@ def find_best_transactions(args, row):
             # Open position
             curr_strategy_state['open_position'] = True
 
-            buy_quantity = params.CAPITAL/row['Close']
+            buy_quantity = app_params.CAPITAL/row['Close']
             curr_strategy_state['trade_history'].append(
                 Transaction(ticker_name, buy_quantity, row['Close'], row.name, curr_strategy_state['buy_columns'])
             )
@@ -72,14 +72,15 @@ def summarise_transactions(transactions):
     profit_perc = 0
 
     for transaction in transactions:
-        if transaction.sell_price > transaction.buy_price:
-            wins += 1
-        else:
-            losses += 1
+        if not transaction.is_active():
+            if transaction.sell_price > transaction.buy_price:
+                wins += 1
+            else:
+                losses += 1
 
-        entries += 1
-        exits += 1
-        profit_perc += transaction.profit_perc
+            entries += 1
+            exits += 1
+            profit_perc += transaction.profit_perc
 
     winrate = 0
     if entries > 0:

@@ -88,9 +88,9 @@ def process_stocks(args):
             buy_columns, sell_column = calculate_buy_sell_signals(ticker_data)  
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
 
-            best_transactions_stat = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
+            best_transactions_stat, transactions = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
             
-            args = (manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, df_profit, df_favourite, df_buy, df_exit)
+            args = (manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, transactions, df_profit, df_favourite, df_buy, df_exit)
             df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(args)
 
             processed_count += 1
@@ -112,17 +112,12 @@ def process_stocks(args):
     return df_profit, df_favourite, df_buy, df_exit
 
 def create_output_dataframes(args):
-    manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, df_profit, df_favourite, df_buy, df_exit = args
-
-    best_transactions_stat.pop('open_position', None)
-    best_transactions_stat.pop('profit_column', None)
-
-    profit_transaction_stat = {k:v for k,v in best_transactions_stat.items() if k not in ['BuyColumns', 'SellColumn', 'TradeHistory', 'BuyDate']}
+    manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, transactions, df_profit, df_favourite, df_buy, df_exit = args
 
     df_profit = pd.concat(
                 [
                     df_profit, 
-                    pd.DataFrame(profit_transaction_stat, index=[0])
+                    pd.DataFrame(best_transactions_stat, index=[0])
                 ], 
                 ignore_index=True
             )
@@ -136,7 +131,7 @@ def create_output_dataframes(args):
                     ignore_index=True
                 )
           
-        if is_today_buy_stock(best_transactions_stat, ticker_data):
+        if is_today_buy_stock(transactions, ticker_data):
             df_buy = pd.concat(
                         [
                             df_buy, 
@@ -145,7 +140,7 @@ def create_output_dataframes(args):
                         ignore_index=True
                     )
 
-        if is_today_exit_stock(best_transactions_stat, ticker_data):
+        if is_today_exit_stock(ticker_data):
             df_exit = pd.concat(
                         [
                             df_exit, 
@@ -221,9 +216,9 @@ if __name__ == "__main__":
     if args.test:
         result_dataframes.append(process_stocks(params[-1]))
     else:
-        print("Spawning process for page ", math.ceil(i/50))
-        with Pool(8) as p:
-            results = p.map(process_stocks, params)
+        print("Spawning child processes")
+        with Pool(app_params.PROCESS_COUNT) as p:
+            result_dataframes = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
     create_output_csv(result_dataframes)

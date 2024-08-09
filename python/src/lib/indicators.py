@@ -48,34 +48,38 @@ def calculate_atr_trailing_stop(data: pd.DataFrame, atr_sensitivity=2, atr_perio
         A Series containing the calculated ATR Trailing Stop values
         The index is the same as the data and the name is 'ATR_TS'
     """
-    # Calculate ATR
-    atr = ta.volatility.AverageTrueRange(data['High'], data['Low'], data['Close'], window=atr_period).average_true_range()
-    
-    # Calculate N loss based on ATR sensitivity
-    n_loss = atr_sensitivity * atr
-    
-    # Initialize the ATR Trailing Stop Series with zeros
-    x_atr_trailing_stop = pd.Series([0.0] * len(data), index=data.index, name='ATR_TS')
-    
-    for i in range(1, len(data)):
-        src = data['Close'][i]
+    try:
+        # Calculate ATR
+        atr = ta.volatility.AverageTrueRange(data['High'], data['Low'], data['Close'], window=atr_period).average_true_range()
         
-        # Calculate ATR Trailing Stop
-        if src > x_atr_trailing_stop[i-1]:
-            x_atr_trailing_stop[i] = src - n_loss[i]
-        else:
-            x_atr_trailing_stop[i] = src + n_loss[i]
+        # Calculate N loss based on ATR sensitivity
+        n_loss = atr_sensitivity * atr
         
-        # Handle case when the price falls below previous ATR Trailing Stop
-        if src < x_atr_trailing_stop[i-1] and data['Close'][i-1] < x_atr_trailing_stop[i-1]:
-            x_atr_trailing_stop[i] = min(x_atr_trailing_stop[i-1], src + n_loss[i])
-        # Handle case when the price rises above previous ATR Trailing Stop
-        else:
-            x_atr_trailing_stop[i] = max(x_atr_trailing_stop[i-1], src - n_loss[i]) if src > x_atr_trailing_stop[i-1] and data['Close'][i-1] > x_atr_trailing_stop[i-1] else x_atr_trailing_stop[i]
+        # Initialize the ATR Trailing Stop Series with zeros
+        x_atr_trailing_stop = pd.Series([0.0] * len(data), index=data.index, name='ATR_TS')
+        
+        for i in range(1, len(data)):
+            src = data['Close'][i]
+            
+            # Calculate ATR Trailing Stop
+            if src > x_atr_trailing_stop[i-1]:
+                x_atr_trailing_stop[i] = src - n_loss[i]
+            else:
+                x_atr_trailing_stop[i] = src + n_loss[i]
+            
+            # Handle case when the price falls below previous ATR Trailing Stop
+            if src < x_atr_trailing_stop[i-1] and data['Close'][i-1] < x_atr_trailing_stop[i-1]:
+                x_atr_trailing_stop[i] = min(x_atr_trailing_stop[i-1], src + n_loss[i])
+            # Handle case when the price rises above previous ATR Trailing Stop
+            else:
+                x_atr_trailing_stop[i] = max(x_atr_trailing_stop[i-1], src - n_loss[i]) if src > x_atr_trailing_stop[i-1] and data['Close'][i-1] > x_atr_trailing_stop[i-1] else x_atr_trailing_stop[i]
+        
+        column_name = 'ATR_TS'
+        data[column_name] = x_atr_trailing_stop
+        return column_name
     
-    column_name = 'ATR_TS'
-    data[column_name] = x_atr_trailing_stop
-    return column_name
+    except Exception as fault:
+        raise Exception("Error calculating ATR Trailing Stop: " + str(fault))
 
 def calculate_stochastic(data, k_length=14, k_smooth_period=3, d_smooth_period=3):
     """
