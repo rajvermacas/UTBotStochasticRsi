@@ -48,6 +48,7 @@ from lib.util import date_util
 import lib.params as app_params
 from lib.util.dataframe_util import create_output_dataframes
 from lib.models import OutputDataframeBuilder
+from lib.util.email_utils import create_send_email
 
 
 def init_log(suffix):
@@ -163,6 +164,7 @@ if __name__ == "__main__":
             result_dataframes = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
-    df_profit_path, df_favourite_path, df_buy_path, df_exit_path = create_output_csv(result_dataframes)
+    csv_profit_path, csv_favourite_path, csv_buy_path, csv_exit_path = create_output_csv(result_dataframes)
+    create_send_email(csv_buy_path, csv_exit_path)
 
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")

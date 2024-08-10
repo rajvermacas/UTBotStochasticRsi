@@ -12,6 +12,9 @@ def send_email_with_attachments(subject, message, recipient_emails, attachment_p
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_APP_PASSWORD")
 
+    if not sender_email or not sender_password:
+        raise Exception("SENDER_EMAIL or SENDER_APP_PASSWORD not set in .env file")
+
     # Setup the MIME
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -74,6 +77,24 @@ def get_recipient_emails():
     mails.extend(additional_emails)
 
     return mails
+
+def create_send_email(buy_csv_path, exit_csv_path):
+    recipient_emails = get_recipient_emails()
+    send_email_with_attachments(
+        "UTBotStochasticRSI Buy/Sell Stocks", 
+        """
+        Hi Trader,
+        
+        - Please find 2 csv files attached: one for buy stocks and the other for exit stocks.
+        - Backtesting and stock selection is done based on last 3 years of data from today.
+        - Before taking a trade, please cross-check with UTBotStochasticRSI at https://in.tradingview.com/script/pyOJZFzk-UT-Bot-Stochastic-RSI/
+        
+        Thank you
+        UTBotStochasticRSI
+        """,
+        recipient_emails, 
+        [buy_csv_path, exit_csv_path]
+    )
 
 
 if __name__=="__main__":

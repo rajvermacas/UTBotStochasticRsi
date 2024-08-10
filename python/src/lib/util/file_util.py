@@ -58,9 +58,9 @@ def create_output_csv(results):
         final_df_buy = pd.concat([final_df_buy, df_buy], ignore_index=True)
         final_df_exit = pd.concat([final_df_exit, df_exit], ignore_index=True)
 
-    df_profit_path = create_csv(final_df_profit, 'Profit', 'performance')
-    df_favourite_path = create_csv(final_df_favourite, 'Winrate', 'favourite')
-    df_buy_path = create_csv(final_df_buy, 'Winrate', 'buy')
-    df_exit_path = create_csv(final_df_exit, 'Winrate', 'exit')
+    csv_profit_path = create_csv(final_df_profit, 'Profit', 'performance')
+    csv_favourite_path = create_csv(final_df_favourite, 'Winrate', 'favourite')
+    csv_buy_path = create_csv(final_df_buy, 'Winrate', 'buy')
+    csv_exit_path = create_csv(final_df_exit, 'Winrate', 'exit')
 
-    return df_profit_path, df_favourite_path, df_buy_path, df_exit_path
+    return csv_profit_path, csv_favourite_path, csv_buy_path, csv_exit_path
