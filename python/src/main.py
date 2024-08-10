@@ -29,25 +29,24 @@ if __name__ == "__main__":
 
 # ============================ Business logic ==============================
 import pandas as pd
-import concurrent.futures
 import time
 import logging
 import builtins
 from multiprocessing import Pool
-from lib.buy_sell import is_today_buy_stock, is_today_exit_stock
-from datetime import datetime, timedelta
 import math
 import argparse
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from lib.data_fetcher import get_tickers_data, get_nifty_stock_names, is_favourite_stock
-from lib.indicator_evaluation import calculate_stock_growth, get_best_strategy_stats
-from lib.buy_sell import calculate_buy_sell_signals, get_buy_columns_combinations
-from lib.indicators import calculate_atr_trailing_stop
-from lib.util import date_util, csv_util
+from lib.util.file_util import get_nifty_stock_names, create_output_csv
+from finance.service import get_tickers_data
+from strategy.service import get_best_strategy_stats
+from indicator.service import calculate_stock_growth, calculate_buy_sell_signals
+from indicator.service import get_buy_columns_combinations, calculate_atr_trailing_stop
+from lib.util import date_util
 import lib.params as app_params
+from lib.util.dataframe_util import create_output_dataframes
 
 
 def init_log(suffix):
@@ -111,64 +110,6 @@ def process_stocks(args):
     
     return df_profit, df_favourite, df_buy, df_exit
 
-def create_output_dataframes(args):
-    manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, transactions, df_profit, df_favourite, df_buy, df_exit = args
-
-    df_profit = pd.concat(
-                [
-                    df_profit, 
-                    pd.DataFrame(best_transactions_stat, index=[0])
-                ], 
-                ignore_index=True
-            )
-
-    if is_favourite_stock(best_transactions_stat, ticker_name, manual_favourite_stocks):
-        df_favourite = pd.concat(
-                    [
-                        df_favourite, 
-                        pd.DataFrame([best_transactions_stat])
-                    ], 
-                    ignore_index=True
-                )
-          
-        if is_today_buy_stock(transactions, ticker_data):
-            df_buy = pd.concat(
-                        [
-                            df_buy, 
-                            pd.DataFrame([best_transactions_stat])
-                        ], 
-                        ignore_index=True
-                    )
-
-        if is_today_exit_stock(ticker_data):
-            df_exit = pd.concat(
-                        [
-                            df_exit, 
-                            pd.DataFrame([best_transactions_stat])
-                        ], 
-                        ignore_index=True
-                    )
-            
-    return df_profit, df_favourite, df_buy, df_exit
-  
-
-def create_output_csv(results):
-    final_df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
-    final_df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
-    final_df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-    final_df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-
-    # Concatenate results from all processes
-    for df_profit, df_favourite, df_buy, df_exit in results:
-        final_df_profit = pd.concat([final_df_profit, df_profit], ignore_index=True)
-        final_df_favourite = pd.concat([final_df_favourite, df_favourite], ignore_index=True)
-        final_df_buy = pd.concat([final_df_buy, df_buy], ignore_index=True)
-        final_df_exit = pd.concat([final_df_exit, df_exit], ignore_index=True)
-
-    csv_util.create_csv(final_df_profit, 'Profit', 'performance')
-    csv_util.create_csv(final_df_favourite, 'Winrate', 'favourite')
-    csv_util.create_csv(final_df_buy, 'Winrate', 'buy')
-    csv_util.create_csv(final_df_exit, 'Winrate', 'exit')
 
 if __name__ == "__main__":
 
@@ -223,7 +164,7 @@ if __name__ == "__main__":
     # Initialize empty DataFrames to concatenate results
     create_output_csv(result_dataframes)
 
-    print("Time taken: ", round(time.time() - _start_time, 2))
+    print(f"Time taken={round(time.time() - _start_time, 2)} seconds")
 
 
 

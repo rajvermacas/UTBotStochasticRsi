@@ -3,8 +3,7 @@ import ta
 from plotly.subplots import make_subplots
 import numpy as np
 import matplotlib.pyplot as plt
-
-from lib.indicators import calculate_stochastic
+from indicator import service as indicator_service
 
 
 def plot_graph(data, ticker_name):
@@ -12,6 +11,7 @@ def plot_graph(data, ticker_name):
     fig = go.Figure(data=[go.Candlestick(x=data.index,
                                          open=data['Open'],
                                          high=data['High'],
+                                         low=data['Low'],
                                          low=data['Low'],
                                          close=data['Close']),
                           go.Scatter(x=data.index, y=data['ATR_TS'], mode='lines', name='ATR Trailing Stop', line=dict(color='purple'), opacity=0.35),
@@ -30,7 +30,7 @@ def plot_graph(data, ticker_name):
     # # Generate Stochastic Oscillator and add it to a new pane below the main graph
     # # stoch_oscillator = ta.momentum.StochasticOscillator(data['Low'], data['High'], data['Close'], window=14, smooth_window=3)
     # # k = stoch_oscillator.stoch()
-    # k, d = calculate_stochastic(data)
+    # k, d = indicator_service.calculate_stochastic(data)
 
     # fig = make_subplots(rows=2, cols=1)
     # fig.add_trace(go.Scatter(x=data.index, y=k, mode='lines', name='Stochastic %K', line=dict(color='blue')), row=1, col=1)
