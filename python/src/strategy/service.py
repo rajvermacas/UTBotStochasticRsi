@@ -119,6 +119,7 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
     dict: A dictionary containing the best strategy statistics, including the stock's name, date, growth, wins, losses, entries, exits, winrate, profit, and profit/stock growth ratio.
     """
     try:
+        ticker_name = ticker_name.rstrip('.NS')
         df_profit_cols = populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_column)
 
         # Prepare temporary strategy state for function find_best_strategy_stat
