@@ -81,6 +81,10 @@ def process_stocks(args):
     # Iterate over each stock
     for ticker_name, ticker_data in tickers_data.items():
         try:
+            # Remove .NS from ticker name
+            if ticker_name.endswith(".NS"):
+                ticker_name = ticker_name[:-3]
+
             builtins.logging.info(f"Starting to maximise stocks profit for ticker={ticker_name}")
 
             pre_populate_indicators(ticker_data)
@@ -89,13 +93,14 @@ def process_stocks(args):
             buy_columns, sell_column = calculate_buy_sell_signals(ticker_data)  
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
 
-            strategy_stat, transactions = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
+            args = (ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations, backtest_start_date, backtest_end_date)
+            strategy_stat, transactions = get_best_strategy_stats(args)
             
-            args = (manual_favourite_stocks, ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit)
+            args = (manual_favourite_stocks, ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit, backtest_start_date, backtest_end_date)
             df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(args)
 
             processed_count += 1
-            print(f"Process id={ticker_counter} Processed stock={ticker_name}. Completed={processed_count}/{len(ticker_names)}")
+            print(f"Process id={ticker_counter} Processed stock={ticker_name} Completed={processed_count}/{len(ticker_names)}")
                 
         except Exception as e:
             print(f"Error occured in maximising stock profit. ticker={ticker_name}. error={e}")
@@ -138,7 +143,7 @@ if __name__ == "__main__":
 
     _start_time = time.time()
     init_log("main")
-    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=1)
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=3)
 
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
@@ -165,6 +170,6 @@ if __name__ == "__main__":
 
     # Initialize empty DataFrames to concatenate results
     csv_profit_path, csv_favourite_path, csv_buy_path, csv_exit_path = create_output_csv(result_dataframes)
-    create_send_email(csv_buy_path, csv_exit_path)
+    # create_send_email(csv_buy_path, csv_exit_path)
 
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")

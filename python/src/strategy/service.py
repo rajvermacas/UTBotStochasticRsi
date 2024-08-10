@@ -24,6 +24,9 @@ from functools import partial
 import os
 import traceback
 import builtins
+import pandas as pd
+import re
+import datetime
 
 from indicator.service import populate_profit_cols, get_profit_column_name
 from lib.models import Transaction
@@ -67,7 +70,10 @@ def find_best_transactions(args, row):
         curr_strategy_state['open_position'] = False
 
     
-def summarise_transactions(transactions):
+def summarise_transactions(transactions: list, 
+                           backtest_start_date: str, 
+                           backtest_end_date: str):
+    
     wins = 0
     losses = 0
     entries = 0
@@ -93,8 +99,32 @@ def summarise_transactions(transactions):
     profit_and_loss = 0
     if exits > 0:
         profit_and_loss = round((wins - losses) / exits, 2)
+    
+    # Split the period from backtest_start_date to backtest_end_date into n sections
+    checkpoint_dates = [pd.to_datetime(backtest_start_date) + pd.Timedelta(
+            days=int(
+                (pd.to_datetime(backtest_end_date) - pd.to_datetime(backtest_start_date)).days * i / app_params.PROFIT_INTERVALS
+            )
+        ) for i in range(1, app_params.PROFIT_INTERVALS)
+    ]
+    checkpoint_dates.append(pd.to_datetime(backtest_end_date))
 
-    return {
+    profit_per_interval = [0] * app_params.PROFIT_INTERVALS
+
+    # Make sure the transactions are sorted on its sell_date
+    transactions.sort(
+        key=lambda transaction: transaction.sell_date if transaction.sell_date else pd.Timestamp.min
+    )
+
+    # Populate profit per interval
+    for transaction in transactions:
+        if not transaction.is_active():
+            for i in range(app_params.PROFIT_INTERVALS):
+                if pd.to_datetime(transaction.sell_date) <= checkpoint_dates[i]:
+                    profit_per_interval[i] = round(profit_per_interval[i] + transaction.profit_perc, 2)
+                    break
+
+    result = {
         'Wins': wins,
         'Losses': losses,
         'Entries': entries,
@@ -104,7 +134,12 @@ def summarise_transactions(transactions):
         'Profit': round(profit_perc, 2),
     }
 
-def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, buy_columns_combinations):
+    for i, value in enumerate(profit_per_interval):
+        result[f'CheckpointProfit{i+1}'] = value
+
+    return result
+
+def get_best_strategy_stats(args):
     """
     This function calculates the best strategy statistics for a given stock.
     
@@ -119,7 +154,8 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
     dict: A dictionary containing the best strategy statistics, including the stock's name, date, growth, wins, losses, entries, exits, winrate, profit, and profit/stock growth ratio.
     """
     try:
-        ticker_name = ticker_name.rstrip('.NS')
+        ticker_name, stock_growth, df_ticker, sell_column, buy_columns_combinations, backtest_start_date, backtest_end_date = args        
+
         df_profit_cols = populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_column)
 
         # Prepare temporary strategy state for function find_best_strategy_stat
@@ -134,7 +170,11 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
 
         strategy_stat = StrategyStatBuilder.build(ticker_name, df_ticker.index[-1], stock_growth)
 
-        best_strategy_stat = summarise_transactions(curr_strategy_state['trade_history'])
+        best_strategy_stat = summarise_transactions(
+            curr_strategy_state['trade_history'],
+            backtest_start_date,
+            backtest_end_date
+        )
         strategy_stat.update(best_strategy_stat)
 
         if strategy_stat['Stock Growth'] < 0 and strategy_stat['Profit'] < 0:
@@ -155,11 +195,16 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
         print(f"Error occured while getting best strategy stats. error={fault}")
         traceback.print_exc()
 
-def is_favourite_stock(best_transactions_stat: dict, ticker_name: str, \
-                       manual_favourite_stocks: set):
+def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
+                       manual_favourite_stocks: set) -> bool:
+    
+    pattern = r'CheckpointProfit\d+'
+    keys_to_check = [key for key in strategy_stat.keys() if re.match(pattern, key)]
+    is_favourite = all(strategy_stat[key] > 30 for key in keys_to_check)
     
     return (ticker_name in manual_favourite_stocks) \
-        or \
-        ((best_transactions_stat['Profit/StockGrowth'] > 0.7) \
-        and (best_transactions_stat['Profit'] > 200) \
-        and (best_transactions_stat['Winrate'] >= 60))
+        or (
+            is_favourite \
+            and (strategy_stat['Profit'] > 100) \
+            and (strategy_stat['Winrate'] >= 60)
+        )
