@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 class Transaction:
     def __init__(self, symbol, quantity, buy_price, buy_date, buy_cols):
         self.symbol = symbol
@@ -46,3 +49,20 @@ class StrategyStatBuilder:
             'Profit': 0,
             'Profit/StockGrowth': 0,
         }
+
+class OutputDataframeBuilder:
+    @staticmethod
+    def build_df_profit():
+        return pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
+    
+    @staticmethod
+    def build_df_favourite():
+        return pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
+    
+    @staticmethod
+    def build_df_buy():
+        return pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+    
+    @staticmethod
+    def build_df_exit():
+        return pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])

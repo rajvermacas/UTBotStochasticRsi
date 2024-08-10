@@ -47,6 +47,7 @@ from indicator.service import get_buy_columns_combinations, calculate_atr_traili
 from lib.util import date_util
 import lib.params as app_params
 from lib.util.dataframe_util import create_output_dataframes
+from lib.models import OutputDataframeBuilder
 
 
 def init_log(suffix):
@@ -70,10 +71,10 @@ def process_stocks(args):
     
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
-    df_profit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_favourite = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    df_buy = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
-    df_exit = pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+    df_profit = OutputDataframeBuilder.build_df_profit()
+    df_favourite = OutputDataframeBuilder.build_df_favourite()
+    df_buy = OutputDataframeBuilder.build_df_buy()
+    df_exit = OutputDataframeBuilder.build_df_exit()
 
     processed_count = 0
     # Iterate over each stock
