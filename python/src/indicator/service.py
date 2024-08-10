@@ -312,18 +312,18 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
             pandas.Series: The processed row of data.
 
         This function takes a row of data and performs the following operations:
-        1. It calls the `open_long_position` function with the ticker name, buy columns combinations, the row, the capital, the open positions, and the index.
-        2. It checks if the row contains a sell signal. If it does, it calls the `close_long_position` function with the ticker name, the row, the open positions, the profit percentage till date, and the index.
+        1. It calls the `_open_long_position` function with the ticker name, buy columns combinations, the row, the capital, the open positions, and the index.
+        2. It checks if the row contains a sell signal. If it does, it calls the `_close_long_position` function with the ticker name, the row, the open positions, the profit percentage till date, and the index.
         3. It iterates over the buy columns combinations and calculates the profit column name.
         4. It retrieves the profit percentage for the current row from the `profit_perc_till_date` dictionary.
         5. It assigns the profit percentage to the corresponding profit column in the row.
         6. It returns the processed row.
         """
         index = row.name
-        open_long_position(ticker_name, buy_columns_combinations, row, params.CAPITAL, open_positions, index)
+        _open_long_position(ticker_name, buy_columns_combinations, row, params.CAPITAL, open_positions, index)
 
         if row[sell_column]:
-            close_long_position(ticker_name, row, open_positions, profit_perc_till_date, index)
+            _close_long_position(ticker_name, row, open_positions, profit_perc_till_date, index)
         
         for buy_cols_combination in buy_columns_combinations:
             profit_column = get_profit_column_name(buy_cols_combination)
@@ -335,7 +335,7 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
 
     return df_with_profit_cols
 
-def close_long_position(ticker_name, row, open_positions, profit_perc_till_date, index):
+def _close_long_position(ticker_name, row, open_positions, profit_perc_till_date, index):
     """
     Closes a long position for the given ticker.
 
@@ -358,7 +358,7 @@ def close_long_position(ticker_name, row, open_positions, profit_perc_till_date,
             profit_perc_till_date[profit_column] = profit_perc_till_date.get(profit_column, 0) + transaction.profit_perc
             # print(f"Closing position. stock={ticker_name} profit={transaction.profit_perc} strategy={profit_column} date of purchase={index}")
 
-def open_long_position(ticker_name, buy_columns_combinations, row, balance, open_positions, index):
+def _open_long_position(ticker_name, buy_columns_combinations, row, balance, open_positions, index):
     """
     Opens a long position for the given ticker.
 

@@ -29,3 +29,20 @@ class Transaction:
     
     def __str__(self):
         return f"Transaction(symbol={self.symbol}, quantity={self.quantity}, buy_price={self.buy_price}, buy_date={self.buy_date}, sell_price={self.sell_price}, sell_date={self.sell_date}, profit_perc={self.profit_perc}, duration={self.duration} bars, buy_cols={self.buy_cols})"
+
+class StrategyStatBuilder:
+    @staticmethod
+    def build(ticker_name, date, stock_growth):
+        # Profit, stock growth, winrate is in percentage
+        return {
+            'Stock': ticker_name,
+            'Date': date,
+            'Stock Growth': stock_growth,
+            'Wins': 0,
+            'Losses': 0,
+            'Entries': 0,
+            'Exits': 0,
+            'Winrate': 0,
+            'Profit': 0,
+            'Profit/StockGrowth': 0,
+        }

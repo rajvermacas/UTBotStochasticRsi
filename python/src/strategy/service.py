@@ -28,6 +28,7 @@ import builtins
 from indicator.service import populate_profit_cols, get_profit_column_name
 from lib.models import Transaction
 from lib import params as app_params
+from lib.models import StrategyStatBuilder
 
 
 def find_best_transactions(args, row):
@@ -130,36 +131,24 @@ def get_best_strategy_stats(ticker_name, stock_growth, df_ticker, sell_column, b
         args = (curr_strategy_state, buy_columns_combinations, ticker_name)
         df_profit_cols.apply(partial(find_best_transactions, args), axis=1)
 
-        # Profit, stock growth, winrate is in percentage
-        transactions_summary = {
-            'Stock': ticker_name,
-            'Date': df_ticker.index[-1],
-            'Stock Growth': stock_growth,
-            'Wins': 0,
-            'Losses': 0,
-            'Entries': 0,
-            'Exits': 0,
-            'Winrate': 0,
-            'Profit': 0,
-            'Profit/StockGrowth': 0,
-        }
+        strategy_stat = StrategyStatBuilder.build(ticker_name, df_ticker.index[-1], stock_growth)
 
         best_strategy_stat = summarise_transactions(curr_strategy_state['trade_history'])
-        transactions_summary.update(best_strategy_stat)
+        strategy_stat.update(best_strategy_stat)
 
-        if transactions_summary['Stock Growth'] < 0 and transactions_summary['Profit'] < 0:
-            transactions_summary['Profit/StockGrowth'] = -round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
+        if strategy_stat['Stock Growth'] < 0 and strategy_stat['Profit'] < 0:
+            strategy_stat['Profit/StockGrowth'] = -round(strategy_stat['Profit'] / strategy_stat['Stock Growth'], 2)
 
         else:
-            transactions_summary['Profit/StockGrowth'] = round(transactions_summary['Profit'] / transactions_summary['Stock Growth'], 2)
+            strategy_stat['Profit/StockGrowth'] = round(strategy_stat['Profit'] / strategy_stat['Stock Growth'], 2)
         
-        # print(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in transactions_summary['TradeHistory']]}")
+        # print(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in strategy_stat['TradeHistory']]}")
         builtins.logging.info(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in curr_strategy_state['trade_history']]}")
 
         if os.environ.get('EXECUTION_MODE') == app_params.EXECUTION_MODE_TEST:
             df_profit_cols.to_csv(os.path.join(os.getenv("OUTPUT_DIR"), "test.csv"))
 
-        return transactions_summary, curr_strategy_state['trade_history']
+        return strategy_stat, curr_strategy_state['trade_history']
 
     except Exception as fault:
         print(f"Error occured while getting best strategy stats. error={fault}")

@@ -87,9 +87,9 @@ def process_stocks(args):
             buy_columns, sell_column = calculate_buy_sell_signals(ticker_data)  
             buy_columns_combinations = get_buy_columns_combinations(buy_columns)
 
-            best_transactions_stat, transactions = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
+            strategy_stat, transactions = get_best_strategy_stats(ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations)
             
-            args = (manual_favourite_stocks, ticker_name, ticker_data, best_transactions_stat, transactions, df_profit, df_favourite, df_buy, df_exit)
+            args = (manual_favourite_stocks, ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit)
             df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(args)
 
             processed_count += 1
@@ -165,6 +165,3 @@ if __name__ == "__main__":
     create_output_csv(result_dataframes)
 
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")
-
-
-
