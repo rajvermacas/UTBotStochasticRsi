@@ -71,10 +71,10 @@ def process_stocks(args):
     
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
-    df_profit = OutputDataframeBuilder.build_df_profit()
-    df_favourite = OutputDataframeBuilder.build_df_favourite()
-    df_buy = OutputDataframeBuilder.build_df_buy()
-    df_exit = OutputDataframeBuilder.build_df_exit()
+    df_profit = OutputDataframeBuilder.build()
+    df_favourite = OutputDataframeBuilder.build()
+    df_buy = OutputDataframeBuilder.build()
+    df_exit = OutputDataframeBuilder.build()
 
     processed_count = 0
     # Iterate over each stock
@@ -163,6 +163,6 @@ if __name__ == "__main__":
             result_dataframes = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
-    create_output_csv(result_dataframes)
+    df_profit_path, df_favourite_path, df_buy_path, df_exit_path = create_output_csv(result_dataframes)
 
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")

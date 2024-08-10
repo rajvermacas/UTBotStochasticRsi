@@ -1,6 +1,8 @@
 import ta
 import pandas as pd
 from itertools import combinations
+import builtins
+
 from indicator import service as indicator_service
 from lib import params as app_params
 import pandas as pd
@@ -95,6 +97,7 @@ def calculate_atr_trailing_stop(data: pd.DataFrame, atr_sensitivity=2, atr_perio
         return column_name
     
     except Exception as fault:
+        builtins.logging.error("Error calculating ATR Trailing Stop: " + str(fault))
         raise Exception("Error calculating ATR Trailing Stop: " + str(fault))
 
 def calculate_stochastic(data, k_length=14, k_smooth_period=3, d_smooth_period=3):

@@ -52,17 +52,5 @@ class StrategyStatBuilder:
 
 class OutputDataframeBuilder:
     @staticmethod
-    def build_df_profit():
-        return pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    
-    @staticmethod
-    def build_df_favourite():
-        return pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit'])
-    
-    @staticmethod
-    def build_df_buy():
-        return pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
-    
-    @staticmethod
-    def build_df_exit():
-        return pd.DataFrame(columns=['Date', 'ticker_name', 'stock_growth', 'total_profit', 'winrate', 'total_profit/stock_growth'])
+    def build():
+        return pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
