@@ -170,6 +170,6 @@ if __name__ == "__main__":
 
     # Initialize empty DataFrames to concatenate results
     csv_profit_path, csv_favourite_path, csv_buy_path, csv_exit_path = create_output_csv(result_dataframes)
-    # create_send_email(csv_buy_path, csv_exit_path)
+    create_send_email(csv_buy_path, csv_exit_path)
 
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")
