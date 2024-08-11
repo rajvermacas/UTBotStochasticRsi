@@ -248,18 +248,17 @@ def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
     checkpoint_winrate_cols = [key for key in strategy_stat.keys() if re.match(pattern_winrate, key)]
     checkpoint_winrate_cols.sort()
 
-    checkpoint_profit_perc_criteria = 10
     checkpoint_pass = True
-
     if checkpoint_profit_cols and checkpoint_winrate_cols:
         # Find all the values in CheckpointProfit* keys that are greater than 30 if there was a trade taken in that interval
         # If there is no trade taken in the interval then consider it as pass
-        for profit_col, winrate_col in zip(checkpoint_profit_cols, checkpoint_winrate_cols):
-            checkpoint_pass &= strategy_stat[profit_col] > checkpoint_profit_perc_criteria
+        for profit_col in checkpoint_profit_cols :
+            checkpoint_pass &= strategy_stat[profit_col] > app_params.CHECKPOINT_PROFIT_PERC_THRESHOLD
     
-    return (ticker_name in manual_favourite_stocks) \
+    manual_favourite_stocks = set(map(str.lower, manual_favourite_stocks))
+    return (ticker_name.lower() in manual_favourite_stocks) \
         or (
             checkpoint_pass \
-            and (strategy_stat['Profit'] > 100) \
+            and (strategy_stat['Profit'] >= 100) \
             and (strategy_stat['Winrate'] >= 60)
         )

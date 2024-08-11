@@ -171,5 +171,4 @@ if __name__ == "__main__":
             print(f"Error occured while sending email. error={e}")
             builtins.logging.exception(f"Error occured while sending email. error={e}")
 
-
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")
