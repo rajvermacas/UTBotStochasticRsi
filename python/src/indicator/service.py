@@ -386,7 +386,6 @@ def _open_long_position(ticker_name, buy_columns_combinations, row, balance, ope
     The position is opened by creating a Transaction object with the ticker name, buy quantity, buy price, index, and buy columns combination.
     The Transaction object is then added to the open_positions dictionary using the profit column name as the key.
     """
-    print()
     for buy_cols_combination in buy_columns_combinations:
         # Check if all the columns in buy_cols_combination are true
         # And there is no open position for the buy_cols_combination

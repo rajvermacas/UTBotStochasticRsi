@@ -216,11 +216,11 @@ def get_best_strategy_stats(args):
             csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"test_{ticker_name}_transactions.csv")
             df_transactions = pd.DataFrame([transaction.to_dict() for transaction in curr_strategy_state['trade_history']])
             df_transactions.to_csv(csv_path, index=False)
-            print(f"Transactions of Stock={ticker_name} saved at path={os.path.join(os.getenv('OUTPUT_DIR'), f'test_{ticker_name}_transactions.csv')}")
+            print(f"CSV created: Transactions of Stock={ticker_name} saved at path={os.path.join(os.getenv('OUTPUT_DIR'), f'test_{ticker_name}_transactions.csv')}")
 
             csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"test_{ticker_name}_profit.csv")
             df_profit_cols.to_csv(csv_path)
-            print(f"Profit columns of Stock={ticker_name} saved at path={csv_path}")
+            print(f"CSV created: Profit columns of Stock={ticker_name} saved at path={csv_path}")
 
         return strategy_stat, curr_strategy_state['trade_history']
 
@@ -248,12 +248,14 @@ def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
     checkpoint_winrate_cols = [key for key in strategy_stat.keys() if re.match(pattern_winrate, key)]
     checkpoint_winrate_cols.sort()
 
+    checkpoint_profit_perc_criteria = 10
     checkpoint_pass = True
+
     if checkpoint_profit_cols and checkpoint_winrate_cols:
         # Find all the values in CheckpointProfit* keys that are greater than 30 if there was a trade taken in that interval
         # If there is no trade taken in the interval then consider it as pass
         for profit_col, winrate_col in zip(checkpoint_profit_cols, checkpoint_winrate_cols):
-            checkpoint_pass &= strategy_stat[profit_col] > 30 if strategy_stat[winrate_col] else True
+            checkpoint_pass &= strategy_stat[profit_col] > checkpoint_profit_perc_criteria
     
     return (ticker_name in manual_favourite_stocks) \
         or (

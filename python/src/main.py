@@ -63,12 +63,12 @@ def pre_populate_indicators(ticker_df):
     atr_column = calculate_atr_trailing_stop(ticker_df)
 
 def process_stocks(args):
-    print("Starting to maximise stocks profit...")
+    print("Start stock processing")
 
     backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
     
     init_log(ticker_counter)
-    builtins.logging.info("Starting to maximise stocks profit...")
+    builtins.logging.info("Start stock processing")
     
     tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
@@ -85,7 +85,7 @@ def process_stocks(args):
             if ticker_name.endswith(".NS"):
                 ticker_name = ticker_name[:-3]
 
-            builtins.logging.info(f"Starting to maximise stocks profit for ticker={ticker_name}")
+            builtins.logging.info(f"Start stock processing for ticker={ticker_name}")
 
             pre_populate_indicators(ticker_data)
             stock_growth = calculate_stock_growth(ticker_data, backtest_start_date, backtest_end_date)
@@ -103,17 +103,10 @@ def process_stocks(args):
             print(f"Process id={ticker_counter} Processed stock={ticker_name} Completed={processed_count}/{len(ticker_names)}")
                 
         except Exception as e:
-            print(f"Error occured in maximising stock profit. ticker={ticker_name}. error={e}")
-            builtins.logging.exception(f"Error occured in main thread. ticker={ticker_name}. error={e}")
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-
-            # Print the exception
-            print("Exception type:", exc_type)
-            print("Exception value:", exc_value)
-
-            # Print the traceback
-            print("Traceback:")
-            traceback.print_tb(exc_traceback)
+            print(f"Error occured in processing stock. ticker={ticker_name}. error={e}")
+            builtins.logging.exception(f"Error occured in processing stock. ticker={ticker_name}. error={e}")
+            
+            traceback.print_exc()
     
     return df_profit, df_favourite, df_buy, df_exit
 
@@ -172,6 +165,11 @@ if __name__ == "__main__":
     csv_profit_path, csv_favourite_path, csv_buy_path, csv_exit_path = create_output_csv(result_dataframes)
     
     if not args.test:
-        create_send_email(csv_buy_path, csv_exit_path)
+        try:
+            create_send_email(csv_buy_path, csv_exit_path)
+        except Exception as e:
+            print(f"Error occured while sending email. error={e}")
+            builtins.logging.exception(f"Error occured while sending email. error={e}")
+
 
     print(f"Time taken={round(time.time() - _start_time, 2)} seconds")
