@@ -81,6 +81,27 @@ def summarise_transactions(transactions: list,
     profit_and_loss = 0
     profit_perc = 0
 
+    # Split the period from backtest_start_date to backtest_end_date into n sections
+    checkpoint_dates = [pd.to_datetime(backtest_start_date) + pd.Timedelta(
+            days=int(
+                (pd.to_datetime(backtest_end_date) - pd.to_datetime(backtest_start_date)).days * i / app_params.PROFIT_INTERVALS
+            )
+        ) for i in range(1, app_params.PROFIT_INTERVALS)
+    ]
+    checkpoint_dates.append(pd.to_datetime(backtest_end_date))
+
+    profit_per_interval = [0] * app_params.PROFIT_INTERVALS
+    wins_per_interval = [0] * app_params.PROFIT_INTERVALS
+    losses_per_interval = [0] * app_params.PROFIT_INTERVALS
+    entries_per_interval = [0] * app_params.PROFIT_INTERVALS
+    exits_per_interval = [0] * app_params.PROFIT_INTERVALS
+
+    # Make sure the transactions are sorted on its sell_date
+    transactions.sort(
+        key=lambda transaction: transaction.sell_date if transaction.sell_date else pd.Timestamp.min
+    )
+
+    # Populate metrics per interval
     for transaction in transactions:
         if not transaction.is_active():
             if transaction.sell_price > transaction.buy_price:
@@ -92,6 +113,17 @@ def summarise_transactions(transactions: list,
             exits += 1
             profit_perc += transaction.profit_perc
 
+            for i in range(app_params.PROFIT_INTERVALS):
+                if pd.to_datetime(transaction.sell_date) <= checkpoint_dates[i]:
+                    profit_per_interval[i] = round(profit_per_interval[i] + transaction.profit_perc, 2)
+                    entries_per_interval[i] += 1
+                    exits_per_interval[i] += 1
+                    if transaction.sell_price > transaction.buy_price:
+                        wins_per_interval[i] += 1
+                    else:
+                        losses_per_interval[i] += 1
+                    break
+
     winrate = 0
     if entries > 0:
         winrate = round((wins / entries) * 100, 2)
@@ -99,30 +131,6 @@ def summarise_transactions(transactions: list,
     profit_and_loss = 0
     if exits > 0:
         profit_and_loss = round((wins - losses) / exits, 2)
-    
-    # Split the period from backtest_start_date to backtest_end_date into n sections
-    checkpoint_dates = [pd.to_datetime(backtest_start_date) + pd.Timedelta(
-            days=int(
-                (pd.to_datetime(backtest_end_date) - pd.to_datetime(backtest_start_date)).days * i / app_params.PROFIT_INTERVALS
-            )
-        ) for i in range(1, app_params.PROFIT_INTERVALS)
-    ]
-    checkpoint_dates.append(pd.to_datetime(backtest_end_date))
-
-    profit_per_interval = [0] * app_params.PROFIT_INTERVALS
-
-    # Make sure the transactions are sorted on its sell_date
-    transactions.sort(
-        key=lambda transaction: transaction.sell_date if transaction.sell_date else pd.Timestamp.min
-    )
-
-    # Populate profit per interval
-    for transaction in transactions:
-        if not transaction.is_active():
-            for i in range(app_params.PROFIT_INTERVALS):
-                if pd.to_datetime(transaction.sell_date) <= checkpoint_dates[i]:
-                    profit_per_interval[i] = round(profit_per_interval[i] + transaction.profit_perc, 2)
-                    break
 
     result = {
         'Wins': wins,
@@ -134,8 +142,13 @@ def summarise_transactions(transactions: list,
         'Profit': round(profit_perc, 2),
     }
 
-    for i, value in enumerate(profit_per_interval):
-        result[f'CheckpointProfit{i+1}'] = value
+    for i in range(app_params.PROFIT_INTERVALS):
+        result[f'CheckpointProfit{i+1}'] = profit_per_interval[i]
+        result[f'CheckpointWins{i+1}'] = wins_per_interval[i]
+        result[f'CheckpointLosses{i+1}'] = losses_per_interval[i]
+        result[f'CheckpointEntries{i+1}'] = entries_per_interval[i]
+        result[f'CheckpointExits{i+1}'] = exits_per_interval[i]
+        result[f'CheckpointWinrate{i+1}'] = round((wins_per_interval[i] / entries_per_interval[i] * 100), 2) if entries_per_interval[i] > 0 else 0
 
     return result
 
@@ -198,6 +211,7 @@ def get_best_strategy_stats(args):
 def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
                        manual_favourite_stocks: set) -> bool:
     
+    # Find all the values in CheckpointProfit* keys that are greater than 30
     pattern = r'CheckpointProfit\d+'
     keys_to_check = [key for key in strategy_stat.keys() if re.match(pattern, key)]
     is_favourite = all(strategy_stat[key] > 30 for key in keys_to_check)
