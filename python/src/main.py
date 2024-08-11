@@ -120,23 +120,22 @@ if __name__ == "__main__":
 
     os.environ['EXECUTION_MODE'] = app_params.EXECUTION_MODE_TEST if args.test else app_params.EXECUTION_MODE_NORMAL
 
+    _start_time = time.time()
+    init_log("main")
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=3)
+
     # Check if running in test mode
     if args.test:
         print("Running in test mode")
         # Test mode configurations
         # Only for testing purpose
-        # backtest_end_date = "2024-05-25"
-
-        ticker_names = ["^NSEI", "GALLANTT.NS"]
-        backtest_end_date = "2024-05-25"
+        # It should be one more than the actual date
+        backtest_end_date = "2024-07-25"
+        ticker_names = ["^NSEI", "PGEL.NS"]
     else:
         print("Running in normal mode")
         # Normal mode configurations
         ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
-
-    _start_time = time.time()
-    init_log("main")
-    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=3)
 
     df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
     df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
