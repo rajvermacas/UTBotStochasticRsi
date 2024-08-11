@@ -148,7 +148,7 @@ def summarise_transactions(transactions: list,
         result[f'CheckpointLosses{i+1}'] = losses_per_interval[i]
         result[f'CheckpointEntries{i+1}'] = entries_per_interval[i]
         result[f'CheckpointExits{i+1}'] = exits_per_interval[i]
-        result[f'CheckpointWinrate{i+1}'] = round((wins_per_interval[i] / entries_per_interval[i] * 100), 2) if entries_per_interval[i] > 0 else 0
+        result[f'CheckpointWinrate{i+1}'] = round((wins_per_interval[i] / entries_per_interval[i] * 100), 2) if entries_per_interval[i] > 0 else None
 
     return result
 
@@ -211,14 +211,33 @@ def get_best_strategy_stats(args):
 def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
                        manual_favourite_stocks: set) -> bool:
     
-    # Find all the values in CheckpointProfit* keys that are greater than 30
-    pattern = r'CheckpointProfit\d+'
-    keys_to_check = [key for key in strategy_stat.keys() if re.match(pattern, key)]
-    is_favourite = all(strategy_stat[key] > 30 for key in keys_to_check)
+    # Below are the Checkpoint columns
+    # CheckpointProfit\d+
+    # CheckpointWins\d+
+    # CheckpointLosses\d+
+    # CheckpointEntries\d+
+    # CheckpointExits\d+
+    # CheckpointWinrate\d+
+    
+    pattern_profit = r'CheckpointProfit\d+'
+    pattern_winrate = r'CheckpointWinrate\d+'
+
+    checkpoint_profit_cols = [key for key in strategy_stat.keys() if re.match(pattern_profit, key)]
+    checkpoint_profit_cols.sort()
+
+    checkpoint_winrate_cols = [key for key in strategy_stat.keys() if re.match(pattern_winrate, key)]
+    checkpoint_winrate_cols.sort()
+
+    checkpoint_pass = True
+    if checkpoint_profit_cols and checkpoint_winrate_cols:
+        # Find all the values in CheckpointProfit* keys that are greater than 30 if there was a trade taken in that interval
+        # If there is no trade taken in the interval then consider it as pass
+        for profit_col, winrate_col in zip(checkpoint_profit_cols, checkpoint_winrate_cols):
+            checkpoint_pass &= strategy_stat[profit_col] > 30 if strategy_stat[winrate_col] else True
     
     return (ticker_name in manual_favourite_stocks) \
         or (
-            is_favourite \
+            checkpoint_pass \
             and (strategy_stat['Profit'] > 100) \
             and (strategy_stat['Winrate'] >= 60)
         )
