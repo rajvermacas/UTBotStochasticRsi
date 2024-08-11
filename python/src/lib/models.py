@@ -31,7 +31,24 @@ class Transaction:
         return self.abs_profit
     
     def __str__(self):
-        return f"Transaction(symbol={self.symbol}, quantity={self.quantity}, buy_price={self.buy_price}, buy_date={self.buy_date}, sell_price={self.sell_price}, sell_date={self.sell_date}, profit_perc={self.profit_perc}, duration={self.duration} bars, buy_cols={self.buy_cols})"
+        return f"Transaction(symbol={self.symbol}, quantity={self.quantity}, " + \
+            f"buy_price={self.buy_price},  sell_price={self.sell_price}, " + \
+            f"buy_date={self.buy_date}, sell_date={self.sell_date}, " + \
+            f"profit_perc={self.profit_perc}, duration={self.duration} bars, " + \
+            f"buy_cols={self.buy_cols})"
+    
+    def to_dict(self):
+        return {
+            'symbol': self.symbol,
+            'quantity': self.quantity,
+            'buy_price': self.buy_price,
+            'sell_price': self.sell_price,
+            'buy_date': self.buy_date,
+            'sell_date': self.sell_date,
+            'profit_perc': self.profit_perc,
+            'duration': self.duration,
+            'buy_cols': self.buy_cols
+        }
 
 class StrategyStatBuilder:
     @staticmethod

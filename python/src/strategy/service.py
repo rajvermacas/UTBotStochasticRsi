@@ -35,10 +35,21 @@ from lib.models import StrategyStatBuilder
 
 
 def find_best_transactions(args, row):
+    """
+    Find the best transactions based on the input arguments and the current row.
+
+    Parameters:
+    - args: Tuple containing the current strategy state, buy column combinations, and ticker name.
+    - row: The current row of data.
+
+    Returns:
+    - None
+    - But updates the current strategy state with the best transactions.
+    """
     curr_strategy_state, buy_cols_combinations, ticker_name = args
     sell_column = app_params.ATR_SELL_COLUMN
 
-    max_profit = 0
+    max_profit = None
     best_signal_column_combination = None
 
     # Only take trade when not in trade already
@@ -46,7 +57,9 @@ def find_best_transactions(args, row):
         for signal_cols in buy_cols_combinations:
             profit_col = get_profit_column_name(signal_cols)
 
-            if row[profit_col] and row[profit_col] > max_profit:
+            if max_profit is None or \
+                (row[profit_col] is not None and row[profit_col] > max_profit):
+                # Enter long position
                 max_profit = row[profit_col]
                 best_signal_column_combination = signal_cols
                 curr_strategy_state['buy_columns'] = signal_cols
@@ -63,7 +76,7 @@ def find_best_transactions(args, row):
                 Transaction(ticker_name, buy_quantity, row['Close'], row.name, curr_strategy_state['buy_columns'])
             )
 
-    # If there is a sell siganl, book profit
+    # If there is a sell signal, book profit
     if curr_strategy_state['open_position'] and row[sell_column]:
         transaction = curr_strategy_state['trade_history'][-1]
         transaction.end(row['Close'], row.name)
@@ -98,7 +111,7 @@ def summarise_transactions(transactions: list,
 
     # Make sure the transactions are sorted on its sell_date
     transactions.sort(
-        key=lambda transaction: transaction.sell_date if transaction.sell_date else pd.Timestamp.min
+        key=lambda transaction: transaction.sell_date if transaction.sell_date else pd.Timestamp.max
     )
 
     # Populate metrics per interval
@@ -200,7 +213,14 @@ def get_best_strategy_stats(args):
         builtins.logging.info(f"Stock={ticker_name} Trade history={[str(transaction) for transaction in curr_strategy_state['trade_history']]}")
 
         if os.environ.get('EXECUTION_MODE') == app_params.EXECUTION_MODE_TEST:
-            df_profit_cols.to_csv(os.path.join(os.getenv("OUTPUT_DIR"), "test.csv"))
+            csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"test_{ticker_name}_transactions.csv")
+            df_transactions = pd.DataFrame([transaction.to_dict() for transaction in curr_strategy_state['trade_history']])
+            df_transactions.to_csv(csv_path, index=False)
+            print(f"Transactions of Stock={ticker_name} saved at path={os.path.join(os.getenv('OUTPUT_DIR'), f'test_{ticker_name}_transactions.csv')}")
+
+            csv_path = os.path.join(os.getenv("OUTPUT_DIR"), f"test_{ticker_name}_profit.csv")
+            df_profit_cols.to_csv(csv_path)
+            print(f"Profit columns of Stock={ticker_name} saved at path={csv_path}")
 
         return strategy_stat, curr_strategy_state['trade_history']
 

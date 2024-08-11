@@ -215,12 +215,17 @@ def calculate_buy_sell_signals(ticker_data):
     ], atr_sell_column
 
 def get_buy_columns_combinations(buy_columns):
-    all_combinations = []
+    atr_buy_signal = "atrBuySignal"
+    all_combinations = [[atr_buy_signal]]
+
+    buy_columns = [col for col in buy_columns if col != atr_buy_signal]
 
     for r in range(1, len(buy_columns) + 1):
         for combo in combinations(buy_columns, r):
             combo = set(combo)
+            combo.add(atr_buy_signal)
             combo = sorted(combo)
+
             all_combinations.append(combo)
 
     return all_combinations
@@ -330,7 +335,7 @@ def populate_profit_cols(df_ticker, ticker_name, buy_columns_combinations, sell_
         
         for buy_cols_combination in buy_columns_combinations:
             profit_column = get_profit_column_name(buy_cols_combination)
-            row[profit_column] = profit_perc_till_date.get(profit_column, 0)
+            row[profit_column] = profit_perc_till_date.get(profit_column)
         
         return row
 
@@ -381,6 +386,7 @@ def _open_long_position(ticker_name, buy_columns_combinations, row, balance, ope
     The position is opened by creating a Transaction object with the ticker name, buy quantity, buy price, index, and buy columns combination.
     The Transaction object is then added to the open_positions dictionary using the profit column name as the key.
     """
+    print()
     for buy_cols_combination in buy_columns_combinations:
         # Check if all the columns in buy_cols_combination are true
         # And there is no open position for the buy_cols_combination

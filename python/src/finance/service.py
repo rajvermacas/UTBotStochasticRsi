@@ -12,7 +12,8 @@ def extract_ticker_dataframe(ticker_name, tickers_data, open="Open", high="High"
     df[close] = tickers_data[close][ticker_name]
     return df
 
-def get_tickers_data(start_date, end_date, ticker_names):            
+def get_tickers_data(start_date, end_date, ticker_names):     
+    print("Downloading stock data...")
     tickers_data = yf.download(ticker_names, start_date, end_date)
 
     flattened_dataframes = {}
