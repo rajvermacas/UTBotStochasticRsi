@@ -151,7 +151,11 @@ if __name__ == "__main__":
     # Create actual argument for process_stocks
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
-        params.append((backtest_start_date, backtest_end_date, math.ceil(i/50), ticker_names_page, manual_favourite_stocks))
+        params.append((backtest_start_date, 
+                       backtest_end_date, 
+                       math.ceil(i/page_size), 
+                       ticker_names_page, 
+                       manual_favourite_stocks))
 
     # Run process_stocks in parallel
     if args.test:
@@ -160,7 +164,7 @@ if __name__ == "__main__":
         process_count = int(os.getenv(app_params.ENV_KEY_PROCESS_COUNT, app_params.DEFAULT_PROCESS_COUNT))
         print(f"Spawning {process_count} child processes")
         builtins.logging.info(f"Spawning {process_count} child processes")
-        
+
         with Pool(process_count) as p:
             result_dataframes = p.map(process_stocks, params)
 
