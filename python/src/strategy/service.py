@@ -32,6 +32,7 @@ from indicator.service import populate_profit_cols, get_profit_column_name
 from lib.models import Transaction
 from lib import params as app_params
 from lib.models import StrategyStatBuilder
+from lib.util.file_util import get_manual_favourite_stocks
 
 
 def find_best_transactions(args, row):
@@ -228,8 +229,7 @@ def get_best_strategy_stats(args):
         print(f"Error occured while getting best strategy stats. error={fault}")
         traceback.print_exc()
 
-def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
-                       manual_favourite_stocks: set) -> bool:
+def is_favourite_stock(strategy_stat: dict, ticker_name: str) -> bool:
     
     # Below are the Checkpoint columns
     # CheckpointProfit\d+
@@ -255,7 +255,8 @@ def is_favourite_stock(strategy_stat: dict, ticker_name: str, \
         for profit_col in checkpoint_profit_cols :
             checkpoint_pass &= strategy_stat[profit_col] > app_params.CHECKPOINT_PROFIT_PERC_THRESHOLD
     
-    manual_favourite_stocks = set(map(str.lower, manual_favourite_stocks))
+    manual_favourite_stocks = set(map(str.lower, get_manual_favourite_stocks()))
+
     return (ticker_name.lower() in manual_favourite_stocks) \
         or (
             checkpoint_pass \

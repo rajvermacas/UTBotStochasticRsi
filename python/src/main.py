@@ -40,7 +40,7 @@ import argparse
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from lib.util.file_util import get_nifty_stock_names, create_output_csv
+from lib.util.file_util import get_nifty_stock_names, create_output_csv, get_manual_favourite_stocks
 from finance.service import get_tickers_data
 from strategy.service import get_best_strategy_stats
 from indicator.service import calculate_stock_growth, calculate_buy_sell_signals
@@ -66,7 +66,7 @@ def pre_populate_indicators(ticker_df):
 def process_stocks(args):
     print("Start stock processing")
 
-    backtest_start_date, backtest_end_date, ticker_counter, ticker_names, manual_favourite_stocks = args
+    backtest_start_date, backtest_end_date, ticker_counter, ticker_names = args
     
     init_log(ticker_counter)
     builtins.logging.info("Start stock processing")
@@ -97,7 +97,7 @@ def process_stocks(args):
             args = (ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations, backtest_start_date, backtest_end_date)
             strategy_stat, transactions = get_best_strategy_stats(args)
             
-            args = (manual_favourite_stocks, ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit, backtest_start_date, backtest_end_date)
+            args = (ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit, backtest_start_date, backtest_end_date)
             df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(args)
 
             processed_count += 1
@@ -138,12 +138,6 @@ if __name__ == "__main__":
         # Normal mode configurations
         ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
 
-    df_buy = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-    df_exit = pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth'])
-
-    df_manual_favourite_stocks = pd.read_csv(os.path.join(os.getenv("INPUT_DIR"), "manual_favourite.csv"))
-    manual_favourite_stocks = set(df_manual_favourite_stocks['Stock'])
-
     page_size = app_params.TICKER_PAGE_SIZE
     params = []
     result_dataframes = []
@@ -151,7 +145,10 @@ if __name__ == "__main__":
     # Create actual argument for process_stocks
     for i in range(0, len(ticker_names), page_size):                    
         ticker_names_page = ticker_names[i:i+page_size]        
-        params.append((backtest_start_date, backtest_end_date, math.ceil(i/50), ticker_names_page, manual_favourite_stocks))
+        params.append((backtest_start_date, 
+                       backtest_end_date, 
+                       math.ceil(i/page_size), 
+                       ticker_names_page))
 
     # Run process_stocks in parallel
     if args.test:
@@ -160,7 +157,7 @@ if __name__ == "__main__":
         process_count = int(os.getenv(app_params.ENV_KEY_PROCESS_COUNT, app_params.DEFAULT_PROCESS_COUNT))
         print(f"Spawning {process_count} child processes")
         builtins.logging.info(f"Spawning {process_count} child processes")
-        
+
         with Pool(process_count) as p:
             result_dataframes = p.map(process_stocks, params)
 
