@@ -21,7 +21,8 @@ def init_project():
     os.environ['INPUT_DIR'] = os.path.join(project_root_dir, 'input')
 
     # Load environment variables from .env file
-    load_dotenv()
+    env_file_path = os.path.join(project_root_dir, 'colab.env')
+    load_dotenv(env_file_path)
 
 
 if __name__ == "__main__":
@@ -157,7 +158,7 @@ if __name__ == "__main__":
         result_dataframes.append(process_stocks(params[-1]))
     else:
         print("Spawning child processes")
-        with Pool(app_params.PROCESS_COUNT) as p:
+        with Pool(os.getenv(app_params.ENV_KEY_PROCESS_COUNT, app_params.DEFAULT_PROCESS_COUNT)) as p:
             result_dataframes = p.map(process_stocks, params)
 
     # Initialize empty DataFrames to concatenate results
