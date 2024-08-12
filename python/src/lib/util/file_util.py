@@ -2,28 +2,59 @@ import os
 import pandas as pd
 from lib.util import date_util
 from lib.models import OutputDataframeBuilder
+from lib import params as app_params
 
 
-def get_favourable_stock_names():
-    csv_path = os.path.join(os.getenv("OUTPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\output"), "favourable_stocks.csv")
-    df = pd.read_csv(csv_path)
-    df['Stock'] = df['Stock']+".NS"
-    return df.Stock.to_list()
+def get_manual_favourite_stocks() -> set:
+    # The result set will not contain .NS suffix
+    try:
+        df_manual_favourite_stocks = pd.read_csv(
+            os.path.join(
+                os.getenv("INPUT_DIR"), 
+                app_params.FILE_NAME_MANUAL_FAVOURITE_STOCKS
+            )
+        )   
+        return set(df_manual_favourite_stocks['Stock'])
+    
+    except FileNotFoundError as fault:
+        print(f"Error occured while getting manual favourite stocks. error={fault}")
+        return set()
 
-def get_nifty_stock_names(filename=None):
+def get_favourite_stocks() -> set:
+    # The result set will contain .NS suffix
+    try:
+        csv_path = os.path.join(os.getenv("INPUT_DIR"), app_params.FILE_NAME_FAVOURITE_STOCKS)
+        df = pd.read_csv(csv_path)
+        df['Stock'] = df['Stock']+".NS"
+        return set(df.Stock)
+
+    except Exception as fault:
+        print(f"Error occured while getting favourite stocks. error={fault}")
+        raise
+
+def get_nifty_stock_names(filename=None) -> list:
+    # The result set will contain .NS suffix
+
     if filename is None:
         filename = "nifty500_stock_names.csv"
 
-    csv_path = os.path.join(os.getenv("INPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\input"), filename)
-    df = pd.read_csv(csv_path)
-    df['Symbol'] = df['Symbol']+".NS"
-    return df.Symbol.to_list()
+    # If manual_favourite_stocks is present
+    # Then add it to the list of stocks
+    manual_favourite_stocks = get_manual_favourite_stocks()
+    manual_favourite_stocks = {stock+".NS" for stock in manual_favourite_stocks}
 
-def get_favourable_stock_names():
-    csv_path = os.path.join(os.getenv("OUTPUT_DIR", r"C:\Users\mrina\cursor-projects\workdocs\Trade\python\output"), "favourable_stocks.csv")
-    df = pd.read_csv(csv_path)
-    df['Stock'] = df['Stock']+".NS"
-    return df.Stock.to_list()
+    # If favourite_stocks is present in the input folder
+    # Then return the list of stocks from that file
+    # else return the list of all nifty stocks
+    if os.path.exists(os.path.join(os.getenv("INPUT_DIR"), app_params.FILE_NAME_FAVOURITE_STOCKS)):
+        return list(manual_favourite_stocks.union(get_favourite_stocks()))
+    
+    else:
+        csv_path = os.path.join(os.getenv("INPUT_DIR"), filename)
+        df = pd.read_csv(csv_path)
+        df['Symbol'] = df['Symbol']+".NS"
+
+        return list(manual_favourite_stocks.union(set(df.Symbol)))
 
 def get_nifty_50_stock_names():
     tickers = pd.read_html('https://ournifty.com/stock-list-in-nse-fo-futures-and-options.html')[0]
