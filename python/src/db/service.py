@@ -11,6 +11,28 @@ def get_latest_date(cursor, symbol):
 
 def download_and_store_data(symbol, start_date, end_date, cursor, conn):
     data = yf.download(symbol, start=start_date, end=end_date)
+
+    if not data.empty:
+        # Convert the index to datetime if it's not already
+        if not isinstance(data.index, pd.DatetimeIndex):
+            data.index = pd.to_datetime(data.index)
+        
+        # Get the earliest date in the downloaded data
+        earliest_date = data.index.min().date()
+        
+        # Check if this date already exists in the database
+        cursor.execute("SELECT COUNT(*) FROM stock_data WHERE symbol = ? AND date = ?", 
+                       (symbol, earliest_date.strftime("%Y-%m-%d %H:%M:%S")))
+        count = cursor.fetchone()[0]
+        
+        if count > 0:
+            # Data for this date already exists, so we'll filter out existing dates
+            cursor.execute("SELECT MAX(date) FROM stock_data WHERE symbol = ?", (symbol,))
+            last_date_in_db = cursor.fetchone()[0]
+            if last_date_in_db:
+                last_date_in_db = datetime.strptime(last_date_in_db.split()[0], "%Y-%m-%d").date()
+                data = data[data.index.date > last_date_in_db]
+
     if not data.empty:
         data = data.reset_index()
         data['Symbol'] = symbol
@@ -18,6 +40,9 @@ def download_and_store_data(symbol, start_date, end_date, cursor, conn):
         data = data[['date', 'Symbol', 'open', 'high', 'low', 'close', 'volume']]
         data.to_sql('stock_data', conn, if_exists='append', index=False)
         conn.commit()
+    
+    else:
+        print(f"No new data available for {symbol} between {start_date} and {end_date}")
 
 def fetch_data(symbol, from_date, to_date, cursor, conn):
     cursor.execute("""
