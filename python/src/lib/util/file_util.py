@@ -3,8 +3,10 @@ import pandas as pd
 from lib.util import date_util
 from lib.models import OutputDataframeBuilder
 from lib import params as app_params
+import functools
 
 
+@functools.lru_cache(maxsize=None)
 def get_manual_favourite_stocks() -> set:
     # The result set will not contain .NS suffix
     try:
@@ -95,3 +97,19 @@ def create_output_csv(results):
     csv_exit_path = create_csv(final_df_exit, 'Winrate', 'exit')
 
     return csv_profit_path, csv_favourite_path, csv_buy_path, csv_exit_path
+
+@functools.lru_cache(maxsize=None)
+def get_premium_stocks() -> set:
+    # The result set will not contain .NS suffix
+    try:
+        df_premium_stocks = pd.read_csv(
+            os.path.join(
+                os.getenv("INPUT_DIR"), 
+                app_params.FILE_NAME_PREMIUM_STOCKS
+            )
+        )   
+        return set(df_premium_stocks['Stock'])
+    
+    except FileNotFoundError as fault:
+        print(f"Error occurred while getting premium stocks. error={fault}")
+        return set()
