@@ -1,4 +1,5 @@
 import pandas as pd
+from lib.util import file_util
 
 
 class Transaction:
@@ -65,9 +66,10 @@ class StrategyStatBuilder:
             'Winrate': 0,
             'Profit': 0,
             'Profit/StockGrowth': 0,
+            'Premium': ticker_name in file_util.get_premium_stocks()
         }
 
 class OutputDataframeBuilder:
     @staticmethod
     def build():
-        return pd.DataFrame(columns=['Date', 'Stock', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])
+        return pd.DataFrame(columns=['Date', 'Stock', 'Premium', 'Stock Growth', 'Profit', 'Winrate', 'Profit/StockGrowth', 'Wins', 'Losses', 'Entries', 'Exits'])

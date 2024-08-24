@@ -5,7 +5,7 @@ from indicator.service import is_today_buy_stock, is_today_exit_stock
 
 
 def create_output_dataframes(args):
-    ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit, backtest_start_date, backtest_end_date = args
+    ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit = args
 
     df_profit = pd.concat(
                 [

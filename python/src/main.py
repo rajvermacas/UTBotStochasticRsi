@@ -40,7 +40,7 @@ import argparse
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from lib.util.file_util import get_nifty_stock_names, create_output_csv, get_manual_favourite_stocks
+from lib.util.file_util import get_nifty_stock_names, create_output_csv
 from finance.service import get_tickers_data
 from strategy.service import get_best_strategy_stats
 from indicator.service import calculate_stock_growth, calculate_buy_sell_signals
@@ -97,7 +97,7 @@ def process_stocks(args):
             args = (ticker_name, stock_growth, ticker_data, sell_column, buy_columns_combinations, backtest_start_date, backtest_end_date)
             strategy_stat, transactions = get_best_strategy_stats(args)
             
-            args = (ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit, backtest_start_date, backtest_end_date)
+            args = (ticker_name, ticker_data, strategy_stat, transactions, df_profit, df_favourite, df_buy, df_exit)
             df_profit, df_favourite, df_buy, df_exit = create_output_dataframes(args)
 
             processed_count += 1
