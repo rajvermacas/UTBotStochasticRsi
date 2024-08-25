@@ -21,6 +21,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import pandas as pd
 from lib.util.file_util import get_nifty_stock_names
+import time
 
 
 def get_latest_date(cursor, symbol):
@@ -140,7 +141,9 @@ def init_project():
 
 
 if __name__ == "__main__":
+    _start_time = time.time()
     init_project()
+    
     update_nifty_stocks_data()
     
     # Example usage of get_stock_data function
@@ -148,3 +151,5 @@ if __name__ == "__main__":
     # end_date = datetime(2023, 6, 1).date()
     # data = get_stock_data("RELIANCE.NS", start_date, end_date)
     # print(data)
+
+    print("Total time taken:", time.time() - _start_time)
