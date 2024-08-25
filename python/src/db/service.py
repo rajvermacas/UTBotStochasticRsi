@@ -1,7 +1,26 @@
+# ========================== Project setup ================================
+import os
+import sys
+def init_project():
+    project_src_dir = r"C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\src"
+    sys.path.append(project_src_dir)
+
+    project_root_dir = os.path.dirname(project_src_dir)
+    
+    os.environ['ROOT_DIR'] = project_root_dir
+    os.environ['OUTPUT_DIR'] = os.path.join(project_root_dir, 'output')
+    os.environ['INPUT_DIR'] = os.path.join(project_root_dir, 'input')
+
+
+if __name__ == "__main__":
+    init_project()
+
+# ========================== Business logic ==============================
 import yfinance as yf
 import sqlite3
 from datetime import datetime, timedelta
 import pandas as pd
+from lib.util.file_util import get_nifty_stock_names
 
 
 def get_latest_date(cursor, symbol):
@@ -59,11 +78,8 @@ def fetch_data(symbol, from_date, to_date, cursor, conn):
     return pd.DataFrame(data, columns=['date', 'symbol', 'open', 'high', 'low', 'close', 'volume'])
 
 def update_nifty_stocks_data():
-    nifty_stocks = [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-        "HINDUNILVR.NS", "HDFC.NS", "SBIN.NS", "BHARTIARTL.NS", "KOTAKBANK.NS",
-        # ... Add all 50 Nifty stocks here
-    ]
+    nifty_stocks = get_nifty_stock_names("nifty_stock_names.csv")
+    print("Number of stocks to process:", len(nifty_stocks))
 
     conn = sqlite3.connect(r'C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\nifty_stocks.db')
     cursor = conn.cursor()
@@ -82,17 +98,23 @@ def update_nifty_stocks_data():
     ''')
 
     start_date = datetime(2000, 1, 1).date()
-    end_date = datetime.now().date()
+    # Add todays'date + 1 more day so that today's date is included
+    # Because yfinance doesn't include last date in the data
+    end_date = datetime.now().date() + timedelta(days=1)
 
     for stock in nifty_stocks:
-        print(f"Updating data for {stock}")
-        latest_date = get_latest_date(cursor, stock)
-        
-        if latest_date:
-            start_date = latest_date + timedelta(days=1)
-        
-        if start_date <= end_date:
-            download_and_store_data(stock, start_date, end_date, cursor, conn)
+        try:
+            print(f"Updating data for {stock}")
+            latest_date = get_latest_date(cursor, stock)
+            
+            if latest_date:
+                start_date = latest_date + timedelta(days=1)
+            
+            if start_date <= end_date:
+                download_and_store_data(stock, start_date, end_date, cursor, conn)
+
+        except Exception as e:
+            print(f"Error updating data for {stock}: {e}")
 
     conn.close()
     print("Data update complete.")
@@ -106,11 +128,23 @@ def get_stock_data(symbol, from_date, to_date):
     conn.close()
     return data
 
+def init_project():
+    project_src_dir = r"C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\src"
+    sys.path.append(project_src_dir)
+
+    project_root_dir = os.path.dirname(project_src_dir)
+    
+    os.environ['ROOT_DIR'] = project_root_dir
+    os.environ['OUTPUT_DIR'] = os.path.join(project_root_dir, 'output')
+    os.environ['INPUT_DIR'] = os.path.join(project_root_dir, 'input')
+
+
 if __name__ == "__main__":
+    init_project()
     update_nifty_stocks_data()
     
     # Example usage of get_stock_data function
-    start_date = datetime(2023, 1, 1).date()
-    end_date = datetime(2023, 6, 1).date()
-    data = get_stock_data("RELIANCE.NS", start_date, end_date)
-    print(data)
+    # start_date = datetime(2023, 1, 1).date()
+    # end_date = datetime(2023, 6, 1).date()
+    # data = get_stock_data("RELIANCE.NS", start_date, end_date)
+    # print(data)
