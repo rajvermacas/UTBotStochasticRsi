@@ -40,7 +40,7 @@ import argparse
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-from lib.util.file_util import get_nifty_stock_names, create_output_csv, get_manual_favourite_stocks
+from lib.util.file_util import get_nifty_stock_names, create_output_csv
 from finance.service import get_tickers_data
 from strategy.service import get_best_strategy_stats
 from indicator.service import calculate_stock_growth, calculate_buy_sell_signals
@@ -123,7 +123,9 @@ if __name__ == "__main__":
 
     _start_time = time.time()
     init_log("main")
-    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(lookback_years=3)
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(
+        lookback_years=app_params.LOOKBACK_YEARS
+    )
 
     # Check if running in test mode
     if args.test:
@@ -166,7 +168,11 @@ if __name__ == "__main__":
     
     if not args.test:
         try:
-            create_send_email(csv_buy_path, csv_exit_path)
+            if os.getenv("SEND_EMAIL") == "true":
+                create_send_email(csv_buy_path, csv_exit_path)
+            else:
+                print("Email sending disabled by SEND_EMAIL env variable")
+
         except Exception as e:
             print(f"Error occured while sending email. error={e}")
             builtins.logging.exception(f"Error occured while sending email. error={e}")

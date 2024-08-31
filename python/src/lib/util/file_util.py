@@ -50,6 +50,9 @@ def get_nifty_stock_names(filename=None) -> list:
         return list(manual_favourite_stocks.union(get_favourite_stocks()))
     
     else:
+        print("File not found: ", os.path.join(os.getenv("INPUT_DIR"), app_params.FILE_NAME_FAVOURITE_STOCKS))
+        print("Getting all nifty stocks")
+
         csv_path = os.path.join(os.getenv("INPUT_DIR"), filename)
         df = pd.read_csv(csv_path)
         df['Symbol'] = df['Symbol']+".NS"
