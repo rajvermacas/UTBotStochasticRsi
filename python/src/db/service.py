@@ -129,6 +129,31 @@ def get_stock_data(symbol, from_date, to_date):
     conn.close()
     return data
 
+def get_max_stock_date():
+    print("Starting get_max_stock_date function")
+    conn = sqlite3.connect(r'C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\nifty_stocks.db')
+    cursor = conn.cursor()
+    
+    try:
+        print("Executing SQL query to fetch max date")
+        cursor.execute("SELECT MAX(date) FROM stock_data")
+        max_date = cursor.fetchone()[0]
+        
+        if max_date:
+            print(f"Max date found: {max_date}")
+            return datetime.strptime(max_date, '%Y-%m-%d').date()
+        else:
+            print("No max date found in the database")
+            return None
+    except Exception as e:
+        print(f"Error fetching max stock date: {e}")
+        return None
+    finally:
+        print("Closing database connection")
+        conn.close()
+        print("get_max_stock_date function completed")
+
+
 def init_project():
     project_src_dir = r"C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\src"
     sys.path.append(project_src_dir)
@@ -140,6 +165,85 @@ def init_project():
     os.environ['INPUT_DIR'] = os.path.join(project_root_dir, 'input')
 
 
+
+def get_stocks_data(start_date, end_date, ticker_names):
+    start_time = time.time()
+
+    conn = sqlite3.connect(r'C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\nifty_stocks.db')
+    
+    query = f"""
+    SELECT date, symbol, open, high, low, close
+    FROM stock_data 
+    WHERE symbol IN ({','.join(['?']*len(ticker_names))})
+      AND date BETWEEN ? AND ?
+    ORDER BY symbol, date
+    """
+    
+    params = ticker_names + [start_date if isinstance(start_date, str) else start_date.strftime("%Y-%m-%d"),
+                             end_date if isinstance(end_date, str) else end_date.strftime("%Y-%m-%d")]
+    
+    query_start_time = time.time()
+    df = pd.read_sql_query(query, conn, params=params)
+    query_end_time = time.time()
+    conn.close()
+    
+    print(f"SQL query to get stocks data execution time: {query_end_time - query_start_time:.2f} seconds")
+    
+    # Reshape the dataframe into a dictionary of dataframes
+    reshape_start_time = time.time()
+    flattened_dataframes = {}
+    for ticker in ticker_names:
+        ticker_df = df[df['symbol'] == ticker].copy()
+
+        if not ticker_df.empty:
+            ticker_df.set_index('date', inplace=True)
+            ticker_df = ticker_df[['open', 'high', 'low', 'close']]
+
+            ticker_df.columns = ['Open', 'High', 'Low', 'Close']
+            flattened_dataframes[ticker] = ticker_df
+    
+    reshape_end_time = time.time()
+    
+    print(f"Dataframe reshaping to flattened_dataframes time: {reshape_end_time - reshape_start_time:.2f} seconds")
+    print(f"Total get_stocks_data function execution time: {time.time() - start_time:.2f} seconds")
+    
+    return flattened_dataframes
+
+def update_stocks_data(flattened_dataframes):
+    print("Starting update_stocks_data function")
+    conn = sqlite3.connect(r'C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\nifty_stocks.db')
+    cursor = conn.cursor()
+    
+    total_records = 0
+    for ticker, df in flattened_dataframes.items():
+        df = df.reset_index()
+        df['symbol'] = ticker
+        df.columns = ['date', 'open', 'high', 'low', 'close', 'symbol']
+        
+        # Prepare data for insertion
+        data = df.to_dict('records')
+        
+        # Use INSERT OR REPLACE to update existing records or insert new ones
+        # Convert Timestamp to string for SQLite compatibility
+        for item in data:
+            item['date'] = item['date'].strftime('%Y-%m-%d')
+
+        try:
+            cursor.executemany("""
+                INSERT OR REPLACE INTO stock_data (date, symbol, open, high, low, close)
+                VALUES (:date, :symbol, :open, :high, :low, :close)
+            """, data)
+            total_records += len(data)
+            print(f"Successfully inserted/updated {len(data)} records for {ticker}")
+        except Exception as e:
+            print(f"Error inserting data for {ticker}: {str(e)}")
+    
+    conn.commit()
+    print(f"Total records processed: {total_records}")
+    conn.close()
+    print("Finished update_stocks_data")
+
+    
 if __name__ == "__main__":
     _start_time = time.time()
     init_project()
