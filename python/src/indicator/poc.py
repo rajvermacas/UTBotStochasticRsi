@@ -1,16 +1,52 @@
+from dotenv import load_dotenv
+import sys
+import os
+import traceback
+
+def init_project():
+    project_src_dir = os.path.join(r"C:\Users\mrina\Documents\Projects\UTBotStochasticRsi\python\src")
+    sys.path.append(project_src_dir)
+
+    project_root_dir = os.path.dirname(project_src_dir)
+    
+    os.environ['ROOT_DIR'] = project_root_dir
+    os.environ['OUTPUT_DIR'] = os.path.join(project_root_dir, 'output')
+    os.environ['INPUT_DIR'] = os.path.join(project_root_dir, 'input')
+
+    # Load environment variables from .env file
+    env_file_path = os.path.join(project_root_dir, 'colab.env')
+    load_dotenv(env_file_path)
+
+if __name__ == "__main__":
+    init_project()
+
 import yfinance as yf
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from scipy import stats
 
+from lib.util.file_util import get_nifty_stock_names
+from lib.util import date_util
+from finance.service import get_tickers_data
+
 def get_stock_data(ticker, start_date, end_date):
     stock = yf.Ticker(ticker)
     data = stock.history(start=start_date, end=end_date)
     return data['Close']
 
-def find_peaks_troughs(prices, prominence=1, distance=1):
+def find_peaks_troughs(prices, prominence_percentage=1, distance_percentage=1):
+    price_range = prices.max() - prices.min()
+    prominence = price_range * (prominence_percentage / 100)
+    distance = int(len(prices) * (distance_percentage / 100))
+
+    if distance < 1:
+        distance = 1
+
+    # Find peaks
     peaks, _ = find_peaks(prices, prominence=prominence, distance=distance)
+    
+    # Find troughs by inverting the prices
     troughs, _ = find_peaks(-prices, prominence=prominence, distance=distance)
     
     # Combine peaks and troughs, sort by index
@@ -20,6 +56,7 @@ def find_peaks_troughs(prices, prominence=1, distance=1):
     last_type = None
     
     for idx, ex_type in extrema:
+        # Ensure we alternate between peaks and troughs
         if last_type is None or ex_type != last_type:
             filtered_extrema.append((idx, ex_type))
             last_type = ex_type
@@ -105,32 +142,74 @@ def predict_movement(prices, peaks, troughs, current_price):
     print(f"Expected price movement (median): {expected_movement_median:.2f}")
     print(f"Expected price movement (trimmed mean): {expected_movement_trimmed:.2f}")
 
-# Example usage
-ticker = 'DIXON.NS'  # Apple Inc.
-start_date = '2020-01-01'
-end_date = '2023-10-24' # Changed to a more recent end date
-# end_date = '2023-12-31' # Changed to a more recent end date
+if __name__ == "__main__":
+    backtest_start_date, backtest_end_date = date_util.get_backtest_start_end_date(
+        lookback_years=4
+    )
+    ticker_names = get_nifty_stock_names("nifty_stock_names.csv")
 
-prices = get_stock_data(ticker, start_date, end_date)
-# Calculate prominence as a percentage of the price range
-price_range = prices.max() - prices.min()
-prominence_percentage = 5  # 5% of the price range
-prominence = price_range * (prominence_percentage / 100)
+    tickers_data = get_tickers_data(backtest_start_date, backtest_end_date, ticker_names)
 
-peaks, troughs = find_peaks_troughs(prices, prominence=prominence, distance=20)
+    results = {}
+    for ticker in ticker_names:
+        prices = tickers_data[ticker]['Close']
+        
+        # Calculate prominence as a percentage of the price range
+        prominence_percentage = 5  # 5% of the price range
+        distance_percentage = 2
 
+        peaks, troughs = find_peaks_troughs(prices, prominence_percentage=5, distance_percentage=1)
 
-print("Peaks:", prices.index[peaks].tolist())
-print("Troughs:", prices.index[troughs].tolist())
+        try:
+            avg_percent, crash_percentages = calculate_average_movement(prices, peaks, troughs)
+            results[ticker] = (avg_percent, peaks, troughs)
+        except Exception as e:
+            print(f"Error calculating average movement for {ticker}: {e}")
 
-# Get the latest price (you may need to adjust this to get the actual current price)
-current_price = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
+    # Print results
+    for ticker, (avg_percent, peaks, troughs) in results.items():
+        print(f"{ticker}: Avg movement percentage between peaks and troughs: {avg_percent:.2f}%")
 
-# predict_movement(prices, peaks, troughs, current_price)
+    # Optional: You can also plot for a specific stock if needed
+    # example_ticker = "MICEL.NS"
+    # plot_stock_with_peaks_troughs(tickers_data[example_ticker]['Close'], results[example_ticker][1], results[example_ticker][2])
 
-# After the existing predict_movement call, add:
-avg_percent, crash_percentages  = calculate_average_movement(prices, peaks, troughs)
-print(f"\nAvg movement percentage between peaks and troughs: {avg_percent:.2f}")
-print(f"\nCrash percentages between peaks and troughs: {crash_percentages}")
+    # Plot graphs for all stocks
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
 
-plot_stock_with_peaks_troughs(prices, peaks, troughs)
+    def plot_all_stocks(tickers_data, results, prominence_percentage, distance_percentage):
+        pdf_filename = f'all_stocks_plots_prom{prominence_percentage}_dist{distance_percentage}.pdf'
+        counter = 1
+        while os.path.exists(pdf_filename):
+            pdf_filename = f'all_stocks_plots_prom{prominence_percentage}_dist{distance_percentage}_{counter}.pdf'
+            counter += 1
+        
+        print(f"Starting to plot all stocks and save to {pdf_filename}")
+        with PdfPages(pdf_filename) as pdf:
+            for ticker, (avg_percent, peaks, troughs) in results.items():
+                print(f"Plotting stock: {ticker}")
+                fig, ax = plt.subplots(figsize=(12, 6))
+                prices = tickers_data[ticker]['Close']
+                
+                ax.plot(prices.index, prices, label='Price')
+                ax.scatter(prices.index[peaks], prices.iloc[peaks], color='green', label='Peaks')
+                ax.scatter(prices.index[troughs], prices.iloc[troughs], color='red', label='Troughs')
+                
+                ax.set_title(f'{ticker}: Avg movement {avg_percent:.2f}%')
+                ax.set_xlabel('Date')
+                ax.set_ylabel('Price')
+                ax.legend()
+                
+                plt.tight_layout()
+                pdf.savefig(fig)
+                plt.close(fig)
+                print(f"Finished plotting {ticker}")
+        
+        print(f"All stock plots saved to {pdf_filename}")
+
+    # Call the function to plot all stocks
+    print("Starting to plot all stocks")
+    plot_all_stocks(tickers_data, results, prominence_percentage, distance_percentage)
+    print("Finished plotting all stocks")
+
