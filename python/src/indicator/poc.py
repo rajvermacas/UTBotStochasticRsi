@@ -2,6 +2,7 @@ import yfinance as yf
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
+from scipy import stats
 
 def get_stock_data(ticker, start_date, end_date):
     stock = yf.Ticker(ticker)
@@ -58,24 +59,57 @@ def analyze_price_movement(prices, peaks, troughs):
 
     return prob_up, prob_down
 
+def calculate_average_movement(prices, peaks, troughs):
+    percentages = []
+    i, j = 0, 0  # Initialize pointers for peaks and troughs
+
+    while i < len(peaks) and j < len(troughs):
+        if peaks[i] < troughs[j]:
+            # Valid peak to trough movement
+            percentage = ((prices.iloc[troughs[j]] - prices.iloc[peaks[i]]) / prices.iloc[peaks[i]]) * 100
+            percentages.append(percentage)
+            i += 1  # Move to the next peak
+        else:
+            j += 1  # Move to the next trough if the current peak is not valid
+
+    if not percentages:
+        return 0  # Return 0 if no crashes were found
+
+    average_percentage = np.median(percentages)
+    
+    return average_percentage, percentages
+
 def predict_movement(prices, peaks, troughs, current_price):
     last_extrema = max(peaks[-1], troughs[-1])
     last_price = prices.iloc[last_extrema]
 
+    median_movement, trimmed_mean_movement, median_percentage, trimmed_mean_percentage = calculate_average_movement(prices, peaks, troughs)
+
     if current_price > last_price:
         print(f"Current price ({current_price:.2f}) is higher than the last extrema ({last_price:.2f})")
         prob_up, prob_down = analyze_price_movement(prices, peaks, troughs)
+        expected_movement_median = current_price * (1 + median_percentage / 100)
+        expected_movement_trimmed = current_price * (1 + trimmed_mean_percentage / 100)
     else:
         print(f"Current price ({current_price:.2f}) is lower than or equal to the last extrema ({last_price:.2f})")
         prob_up, prob_down = analyze_price_movement(prices, troughs, peaks)
+        expected_movement_median = current_price * (1 - median_percentage / 100)
+        expected_movement_trimmed = current_price * (1 - trimmed_mean_percentage / 100)
 
     print(f"Probability of price going up: {prob_up:.2%}")
     print(f"Probability of price going down: {prob_down:.2%}")
+    print(f"Median movement between peaks and troughs: {median_movement:.2f}")
+    print(f"Trimmed mean movement between peaks and troughs: {trimmed_mean_movement:.2f}")
+    print(f"Median percentage change: {median_percentage:.2%}")
+    print(f"Trimmed mean percentage change: {trimmed_mean_percentage:.2%}")
+    print(f"Expected price movement (median): {expected_movement_median:.2f}")
+    print(f"Expected price movement (trimmed mean): {expected_movement_trimmed:.2f}")
 
 # Example usage
 ticker = 'DIXON.NS'  # Apple Inc.
 start_date = '2020-01-01'
-end_date = '2023-12-31'  # Changed to a more recent end date
+end_date = '2023-10-24' # Changed to a more recent end date
+# end_date = '2023-12-31' # Changed to a more recent end date
 
 prices = get_stock_data(ticker, start_date, end_date)
 # Calculate prominence as a percentage of the price range
@@ -93,4 +127,9 @@ print("Troughs:", prices.index[troughs].tolist())
 # Get the latest price (you may need to adjust this to get the actual current price)
 current_price = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
 
-predict_movement(prices, peaks, troughs, current_price)
+# predict_movement(prices, peaks, troughs, current_price)
+
+# After the existing predict_movement call, add:
+avg_percent, crash_percentages  = calculate_average_movement(prices, peaks, troughs)
+print(f"\nAvg movement percentage between peaks and troughs: {avg_percent:.2f}")
+print(f"\nCrash percentages between peaks and troughs: {crash_percentages}")
