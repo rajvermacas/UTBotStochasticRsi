@@ -119,7 +119,6 @@ prominence = price_range * (prominence_percentage / 100)
 
 peaks, troughs = find_peaks_troughs(prices, prominence=prominence, distance=20)
 
-plot_stock_with_peaks_troughs(prices, peaks, troughs)
 
 print("Peaks:", prices.index[peaks].tolist())
 print("Troughs:", prices.index[troughs].tolist())
@@ -133,3 +132,5 @@ current_price = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
 avg_percent, crash_percentages  = calculate_average_movement(prices, peaks, troughs)
 print(f"\nAvg movement percentage between peaks and troughs: {avg_percent:.2f}")
 print(f"\nCrash percentages between peaks and troughs: {crash_percentages}")
+
+plot_stock_with_peaks_troughs(prices, peaks, troughs)
