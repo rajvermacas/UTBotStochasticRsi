@@ -355,6 +355,7 @@ calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, back
     [profit, winrate] = backtest_profit(backtestDateStart, backtestDateEnd, buy, sell)
     [buy, sell, profit, winrate]
 
+// ============================= Function declarations ends here =============================
 
 src = close
 xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
