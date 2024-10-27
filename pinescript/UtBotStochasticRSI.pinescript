@@ -342,8 +342,6 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
     // Reset buySignalLow after selling
     if sell
         buySignalLow := na
-        // Note: We don't reset inGreenPhase here because we want to prevent new buys
-        // until ATR line turns red
         
     [buy, sell]
 
@@ -356,102 +354,82 @@ calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, back
 src = close
 xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
 
+// Test all combinations of buy and sell signals
+float maxProfit = 0.0
+bool bestUseRSI = false
+bool bestUseStochastic = false
+bool bestUseEma200 = false
+bool bestUseEma50Cross200 = false
+string bestSellSignalType = "ATR_CROSS"
+bool bestBuy = false
+bool bestSell = false
+
 // Array of sell signal types to test
 sellSignalTypes = array.from("ATR_CROSS", "CLOSE_BELOW", "LOW_BELOW")
 
-// Placeholders for overall best results
-float overallBestProfit = 0.0
-bool overallBestBuy = false
-bool overallBestSell = false
-bool overallBestUseRSI = false
-bool overallBestUseStochastic = false
-bool overallBestUseEma200 = false
-bool overallBestUseEma50Cross200 = false
-string overallBestSellType = "ATR_CROSS"
-
 // Test each combination
 for sellType in sellSignalTypes
-    // Calculate and backtest buy sell signals for all combinations of useRsi and useStochastic
-    var float[] profits = array.new_float(4)
-    var bool[] buys = array.new_bool(4)
-    var bool[] sells = array.new_bool(4)
-    
-    for i = 0 to 3
-        useRSI = i >= 2  // false for i=0,1; true for i=2,3
-        useStochastic = i % 2 == 1  // false for i=0,2; true for i=1,3
-        [buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, false, false, sellType)
-        array.set(profits, i, profit)
-        array.set(buys, i, buy)
-        array.set(sells, i, sell)
-    
-    profit = array.get(profits, 0)
-    buy = array.get(buys, 0)
-    sell = array.get(sells, 0)
-    profitStochastic = array.get(profits, 1)
-    buyStochastic = array.get(buys, 1)
-    sellStochastic = array.get(sells, 1)
-    profitRSI = array.get(profits, 2)
-    buyRSI = array.get(buys, 2)
-    sellRSI = array.get(sells, 2)
-    profitRSIStochastic = array.get(profits, 3)
-    buyRSIStochastic = array.get(buys, 3)
-    sellRSIStochastic = array.get(sells, 3)
-    
-    // Find best combination for current sell signal type
-    float currentBestProfit = profit
-    bool currentBestBuy = buy
-    bool currentBestSell = sell
-    bool currentBestUseRSI = false
-    bool currentBestUseStochastic = false
-    bool currentBestUseEma50Cross200 = false
+    // Test without indicators
+    [buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, false, false, sellType)
+    if profit > maxProfit
+        maxProfit := profit
+        bestBuy := buy
+        bestSell := sell
+        bestUseRSI := false
+        bestUseStochastic := false
+        bestUseEma200 := false
+        bestUseEma50Cross200 := false
+        bestSellSignalType := sellType
 
-    if profitStochastic > currentBestProfit
-        currentBestProfit := profitStochastic
-        currentBestBuy := buyStochastic
-        currentBestSell := sellStochastic
-        currentBestUseRSI := false
-        currentBestUseStochastic := true
+    // Test with Stochastic
+    [buyStoch, sellStoch, profitStoch] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, false, false, sellType)
+    if profitStoch > maxProfit
+        maxProfit := profitStoch
+        bestBuy := buyStoch
+        bestSell := sellStoch
+        bestUseRSI := false
+        bestUseStochastic := true
+        bestUseEma200 := false
+        bestUseEma50Cross200 := false
+        bestSellSignalType := sellType
 
-    if profitRSI > currentBestProfit
-        currentBestProfit := profitRSI
-        currentBestBuy := buyRSI
-        currentBestSell := sellRSI
-        currentBestUseRSI := true
-        currentBestUseStochastic := false
+    // Test with RSI
+    [buyRSI, sellRSI, profitRSI] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, false, false, sellType)
+    if profitRSI > maxProfit
+        maxProfit := profitRSI
+        bestBuy := buyRSI
+        bestSell := sellRSI
+        bestUseRSI := true
+        bestUseStochastic := false
+        bestUseEma200 := false
+        bestUseEma50Cross200 := false
+        bestSellSignalType := sellType
 
-    if profitRSIStochastic > currentBestProfit
-        currentBestProfit := profitRSIStochastic
-        currentBestBuy := buyRSIStochastic
-        currentBestSell := sellRSIStochastic
-        currentBestUseRSI := true
-        currentBestUseStochastic := true
+    // Test with both RSI and Stochastic
+    [buyBoth, sellBoth, profitBoth] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, false, false, sellType)
+    if profitBoth > maxProfit
+        maxProfit := profitBoth
+        bestBuy := buyBoth
+        bestSell := sellBoth
+        bestUseRSI := true
+        bestUseStochastic := true
+        bestUseEma200 := false
+        bestUseEma50Cross200 := false
+        bestSellSignalType := sellType
 
-    // Test with EMA50 cross EMA200 if lowRiskEntry is enabled
-    if lowRiskEntry
-        [buyEma50Cross200, sellEma50Cross200, profitEma50Cross200] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, currentBestUseRSI, currentBestUseStochastic, false, true, sellType)
-        if profitEma50Cross200 > currentBestProfit
-            currentBestProfit := profitEma50Cross200
-            currentBestBuy := buyEma50Cross200
-            currentBestSell := sellEma50Cross200
-            currentBestUseEma50Cross200 := true
+// Test EMA 50/200 if lowRiskEntry is enabled
+if lowRiskEntry
+    [buyEma, sellEma, profitEma] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseEma200, true, bestSellSignalType)
+    if profitEma > maxProfit
+        maxProfit := profitEma
+        bestBuy := buyEma
+        bestSell := sellEma
+        bestUseEma50Cross200 := true
 
-    // Update overall best if current combination is better
-    if currentBestProfit > overallBestProfit
-        overallBestProfit := currentBestProfit
-        overallBestBuy := currentBestBuy
-        overallBestSell := currentBestSell
-        overallBestUseRSI := currentBestUseRSI
-        overallBestUseStochastic := currentBestUseStochastic
-        overallBestUseEma50Cross200 := currentBestUseEma50Cross200
-        overallBestSellType := sellType
-
-// Assign the overall best results to bestBuy and bestSell
-bestBuy = overallBestBuy
-bestSell = overallBestSell
-
+// Rest of the code remains the same, using bestBuy and bestSell for plotting and alerts
 
 // Add alerts
-alertcondition(bestBuy, title="UTBot Stochastic RSI Buy  Signal", message="UTBot Stochastic RSI Buy Signal")
+alertcondition(bestBuy, title="UTBot Stochastic RSI Buy Signal", message="UTBot Stochastic RSI Buy Signal")
 alertcondition(bestSell, title="UTBot Stochastic RSI Sell Signal", message="UTBot Stochastic RSI Sell Signal")
 
 
