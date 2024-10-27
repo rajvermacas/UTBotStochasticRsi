@@ -234,6 +234,11 @@ f_backtest_main(_date_start, _date_end, _entry_signal, _exit_signal, _take_profi
 do_transaction(int _date_start, int _date_end, bool _entry_signal, bool _exit_signal, simple float _take_profit_percentage=0.0, simple float _stop_loss_percentage=0.0, simple int _atr_length=0, float _initial_capital=1000.00, float _order_size=100, float _commission=0.0, bool _on_bar_close=true, series float _high=high, series float _low=low, series float _src=close, simple bool _chart=true) =>
     [profit_perc, open_balance, winrate, entries, exits, wins, losses] = f_backtest_main(_date_start, _date_end, _entry_signal, _exit_signal, _take_profit_percentage, _stop_loss_percentage, _atr_length, _initial_capital, _order_size, _commission, _on_bar_close, _high, _low, _src, _chart)
 
+
+backtest_profit(int _date_start, int _date_end, bool _entry_signal, bool _exit_signal, simple float _take_profit_percentage=0.0, simple float _stop_loss_percentage=0.0, simple int _atr_length=0, float _initial_capital=1000.00, float _order_size=100, float _commission=0.0, bool _on_bar_close=true, series float _high=high, series float _low=low, series float _src=close, simple bool _chart=false) =>
+    [profit_perc, open_balance, winrate, entries, exits, wins, losses] = f_backtest_main(_date_start, _date_end, _entry_signal, _exit_signal, _take_profit_percentage, _stop_loss_percentage, _atr_length, _initial_capital, _order_size, _commission, _on_bar_close, _high, _low, _src, _chart)
+    [profit_perc, winrate]
+
 calculateATRTrailingStop(src, atrSensitivity, atrPeriod) =>
     xATR = ta.atr(atrPeriod)
     nLoss = atrSensitivity * xATR
@@ -347,89 +352,96 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
 
 calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useEma200=false, useEma50Cross200=false, sellSignalType="ATR_CROSS") =>
     [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, sellSignalType)
-    profit = backtest.profit(backtestDateStart, backtestDateEnd, buy, sell)
-    [buy, sell, profit]
+    [profit, winrate] = backtest_profit(backtestDateStart, backtestDateEnd, buy, sell)
+    [buy, sell, profit, winrate]
 
-// First declare src and xATRTrailingStop
+
 src = close
 xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
 
-// Test all combinations of buy and sell signals
-float maxProfit = 0.0
-bool bestUseRSI = false
-bool bestUseStochastic = false
-bool bestUseEma200 = false
-bool bestUseEma50Cross200 = false
-string bestSellSignalType = "ATR_CROSS"
-bool bestBuy = false
-bool bestSell = false
+// Placeholders
+bool bestBuy = na
+bool bestSell = na
+float bestProfit = -100000
+bestWinrate = 0.0
+bestUseRSI = false
+bestUseStochastic = false
+bestUseEma200 = false
+bestUseEma50Cross200 = false
 
-// Array of sell signal types to test
 sellSignalTypes = array.from("ATR_CROSS", "CLOSE_BELOW", "LOW_BELOW")
+// sellSignalTypes = array.from("ATR_CROSS")
 
 // Test each combination
 for sellType in sellSignalTypes
-    // Test without indicators
-    [buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, false, false, sellType)
-    if profit > maxProfit
-        maxProfit := profit
+
+    // Calculate and backtest buy sell signals given all combination of useRsi and useStochastic
+    // [buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false)
+    // [buyStochastic, sellStochastic, profitStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true)
+    // [buyRSI, sellRSI, profitRSI] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false)
+    // [buyRSIStochastic, sellRSIStochastic, profitRSIStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true)
+
+    // buy, sell means today buy or sell signal is generated or not
+    // profit means profit made till tioday using the strategy
+    // The var keyword in Pine Script retains values across bars, NOT across multiple function calls.
+
+    [buy, sell, profit, winrate] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, sellSignalType=sellType)
+    if winrate > bestWinrate
+        bestProfit := profit
+        bestWinrate := winrate
         bestBuy := buy
         bestSell := sell
         bestUseRSI := false
         bestUseStochastic := false
-        bestUseEma200 := false
-        bestUseEma50Cross200 := false
-        bestSellSignalType := sellType
+        log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrate, "#.##"))
 
-    // Test with Stochastic
-    [buyStoch, sellStoch, profitStoch] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, false, false, sellType)
-    if profitStoch > maxProfit
-        maxProfit := profitStoch
-        bestBuy := buyStoch
-        bestSell := sellStoch
+
+    [buyStochastic, sellStochastic, profitStochastic, winrateStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, sellSignalType=sellType)
+    if winrateStochastic > bestWinrate
+        bestProfit := profitStochastic
+        bestWinrate := winrateStochastic
+        bestBuy := buyStochastic
+        bestSell := sellStochastic
         bestUseRSI := false
         bestUseStochastic := true
-        bestUseEma200 := false
-        bestUseEma50Cross200 := false
-        bestSellSignalType := sellType
+        log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochastic, "#.##"))
 
-    // Test with RSI
-    [buyRSI, sellRSI, profitRSI] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, false, false, sellType)
-    if profitRSI > maxProfit
-        maxProfit := profitRSI
+
+    [buyRSI, sellRSI, profitRSI, winrateRSI] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, sellSignalType=sellType)
+    if winrateRSI > bestWinrate
+        bestProfit := profitRSI
+        bestWinrate := winrateRSI
         bestBuy := buyRSI
         bestSell := sellRSI
         bestUseRSI := true
         bestUseStochastic := false
-        bestUseEma200 := false
-        bestUseEma50Cross200 := false
-        bestSellSignalType := sellType
-
-    // Test with both RSI and Stochastic
-    [buyBoth, sellBoth, profitBoth] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, false, false, sellType)
-    if profitBoth > maxProfit
-        maxProfit := profitBoth
-        bestBuy := buyBoth
-        bestSell := sellBoth
+        log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSI, "#.##"))
+    
+    [buyRSIStochastic, sellRSIStochastic, profitRSIStochastic, winrateRSIStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, sellSignalType=sellType)
+    if winrateRSIStochastic > bestWinrate
+        bestProfit := profitRSIStochastic
+        bestWinrate := winrateRSIStochastic
+        bestBuy := buyRSIStochastic
+        bestSell := sellRSIStochastic
         bestUseRSI := true
         bestUseStochastic := true
-        bestUseEma200 := false
-        bestUseEma50Cross200 := false
-        bestSellSignalType := sellType
+        log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochastic, "#.##"))
 
-// Test EMA 50/200 if lowRiskEntry is enabled
-if lowRiskEntry
-    [buyEma, sellEma, profitEma] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseEma200, true, bestSellSignalType)
-    if profitEma > maxProfit
-        maxProfit := profitEma
-        bestBuy := buyEma
-        bestSell := sellEma
+    useEma50Cross200 = lowRiskEntry
+    [buyEma50Cross200, sellEma50Cross200, profitEma50Cross200, winrateEma50Cross200] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseEma200, useEma50Cross200, sellSignalType=sellType)
+
+    if winrateEma50Cross200 > winrateEma50Cross200
+        bestBuy := buyEma50Cross200
+        bestSell := sellEma50Cross200
+        bestProfit := profitEma50Cross200
+        bestWinrate := winrateEma50Cross200
         bestUseEma50Cross200 := true
+        log.info("bestProfit, bestBuy, bestSell, sellType, winrateEma50Cross200: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateEma50Cross200, "#.##"))
 
-// Rest of the code remains the same, using bestBuy and bestSell for plotting and alerts
+
 
 // Add alerts
-alertcondition(bestBuy, title="UTBot Stochastic RSI Buy Signal", message="UTBot Stochastic RSI Buy Signal")
+alertcondition(bestBuy, title="UTBot Stochastic RSI Buy  Signal", message="UTBot Stochastic RSI Buy Signal")
 alertcondition(bestSell, title="UTBot Stochastic RSI Sell Signal", message="UTBot Stochastic RSI Sell Signal")
 
 
