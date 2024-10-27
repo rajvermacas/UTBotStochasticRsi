@@ -295,7 +295,7 @@ getEmaCrossEmaBuySignal(src, emaFastPeriod, emaSlowPeriod) =>
     emaSlow = ta.ema(src, emaSlowPeriod)
     emaCrossEmaBuySignal = emaFast>emaSlow
 
-calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200) =>
+calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, sellSignalType) =>
     ema = ta.ema(src, 1)
     
     // Store the low of buy signal bar
@@ -332,8 +332,12 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
         buySignalLow := low
         inGreenPhase := true
     
-    // Sell when either trailing stop is hit or price goes below the buy signal's low
-    sell = ta.crossover(xATRTrailingStop, ema) or (not na(buySignalLow) and close < buySignalLow)
+    // Different sell signal types
+    sell = switch sellSignalType
+        "ATR_CROSS" => ta.crossover(xATRTrailingStop, ema)  // Always included
+        "CLOSE_BELOW" => ta.crossover(xATRTrailingStop, ema) or (not na(buySignalLow) and close < buySignalLow)
+        "LOW_BELOW" => ta.crossover(xATRTrailingStop, ema) or (not na(buySignalLow) and low < buySignalLow)
+        => ta.crossover(xATRTrailingStop, ema)  // Default case
     
     // Reset buySignalLow after selling
     if sell
@@ -343,71 +347,107 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
         
     [buy, sell]
 
-calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useEma200=false, useEma50Cross200=false) =>
-    [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200)
+calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useEma200=false, useEma50Cross200=false, sellSignalType="ATR_CROSS") =>
+    [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, sellSignalType)
     profit = backtest.profit(backtestDateStart, backtestDateEnd, buy, sell)
     [buy, sell, profit]
 
-
+// First declare src and xATRTrailingStop
 src = close
 xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
 
-// Calculate and backtest buy sell signals given all combination of useRsi and useStochastic
-[buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false)
-[buyStochastic, sellStochastic, profitStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true)
-[buyRSI, sellRSI, profitRSI] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false)
-[buyRSIStochastic, sellRSIStochastic, profitRSIStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true)
+// Array of sell signal types to test
+sellSignalTypes = array.from("ATR_CROSS", "CLOSE_BELOW", "LOW_BELOW")
 
-// Placeholders
-bestBuy = buy
-bestSell = sell
-bestProfit = profit
-bestUseRSI = false
-bestUseStochastic = false
-bestUseEma200 = false
-bestUseEma50Cross200 = false
+// Placeholders for overall best results
+float overallBestProfit = 0.0
+bool overallBestBuy = false
+bool overallBestSell = false
+bool overallBestUseRSI = false
+bool overallBestUseStochastic = false
+bool overallBestUseEma200 = false
+bool overallBestUseEma50Cross200 = false
+string overallBestSellType = "ATR_CROSS"
 
-if profitStochastic >= profit and profitStochastic >= profitRSI and profitStochastic >= profitRSIStochastic
-    // log.info("The largest profit was obtained when useRSI was false and useStochastic was true")
-    bestBuy := buyStochastic
-    bestSell := sellStochastic
-    bestProfit := profitStochastic
-    bestUseRSI := false
-    bestUseStochastic := true
+// Test each combination
+for sellType in sellSignalTypes
+    // Calculate and backtest buy sell signals for all combinations of useRsi and useStochastic
+    var float[] profits = array.new_float(4)
+    var bool[] buys = array.new_bool(4)
+    var bool[] sells = array.new_bool(4)
+    
+    for i = 0 to 3
+        useRSI = i >= 2  // false for i=0,1; true for i=2,3
+        useStochastic = i % 2 == 1  // false for i=0,2; true for i=1,3
+        [buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, false, false, sellType)
+        array.set(profits, i, profit)
+        array.set(buys, i, buy)
+        array.set(sells, i, sell)
+    
+    profit = array.get(profits, 0)
+    buy = array.get(buys, 0)
+    sell = array.get(sells, 0)
+    profitStochastic = array.get(profits, 1)
+    buyStochastic = array.get(buys, 1)
+    sellStochastic = array.get(sells, 1)
+    profitRSI = array.get(profits, 2)
+    buyRSI = array.get(buys, 2)
+    sellRSI = array.get(sells, 2)
+    profitRSIStochastic = array.get(profits, 3)
+    buyRSIStochastic = array.get(buys, 3)
+    sellRSIStochastic = array.get(sells, 3)
+    
+    // Find best combination for current sell signal type
+    float currentBestProfit = profit
+    bool currentBestBuy = buy
+    bool currentBestSell = sell
+    bool currentBestUseRSI = false
+    bool currentBestUseStochastic = false
+    bool currentBestUseEma50Cross200 = false
 
-else if profitRSI >= profit and profitRSI >= profitStochastic and profitRSI >= profitRSIStochastic
-    // log.info("The largest profit was obtained when useRSI was true and useStochastic was false")
-    bestBuy := buyRSI
-    bestSell := sellRSI
-    bestProfit := profitRSI
-    bestUseRSI := true
-    bestUseStochastic := false
+    if profitStochastic > currentBestProfit
+        currentBestProfit := profitStochastic
+        currentBestBuy := buyStochastic
+        currentBestSell := sellStochastic
+        currentBestUseRSI := false
+        currentBestUseStochastic := true
 
-else if profitRSIStochastic >= profit and profitRSIStochastic >= profitStochastic and profitRSIStochastic >= profitRSI
-    // log.info("The largest profit was obtained when useRSI and useStochastic were both true")
-    bestBuy := buyRSIStochastic
-    bestSell := sellRSIStochastic
-    bestProfit := profitRSIStochastic
-    bestUseRSI := true
-    bestUseStochastic := true
+    if profitRSI > currentBestProfit
+        currentBestProfit := profitRSI
+        currentBestBuy := buyRSI
+        currentBestSell := sellRSI
+        currentBestUseRSI := true
+        currentBestUseStochastic := false
 
-else
-    // log.info("The largest profit was obtained when useRSI and useStochastic were both false")
-    bestBuy := buy
-    bestSell := sell
-    bestProfit := profit
-    bestUseRSI := false
-    bestUseStochastic := false
+    if profitRSIStochastic > currentBestProfit
+        currentBestProfit := profitRSIStochastic
+        currentBestBuy := buyRSIStochastic
+        currentBestSell := sellRSIStochastic
+        currentBestUseRSI := true
+        currentBestUseStochastic := true
 
-useEma50Cross200 = lowRiskEntry
-[buyEma50Cross200, sellEma50Cross200, profitEma50Cross200] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseEma200, useEma50Cross200)
+    // Test with EMA50 cross EMA200 if lowRiskEntry is enabled
+    if lowRiskEntry
+        [buyEma50Cross200, sellEma50Cross200, profitEma50Cross200] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, currentBestUseRSI, currentBestUseStochastic, false, true, sellType)
+        if profitEma50Cross200 > currentBestProfit
+            currentBestProfit := profitEma50Cross200
+            currentBestBuy := buyEma50Cross200
+            currentBestSell := sellEma50Cross200
+            currentBestUseEma50Cross200 := true
 
-if profitEma50Cross200 > bestProfit
-    // log.info("The largest profit was obtained with EMA 50 cross 200 filter")
-    bestBuy := buyEma50Cross200
-    bestSell := sellEma50Cross200
-    bestProfit := profitEma50Cross200
-    bestUseEma50Cross200 := true
+    // Update overall best if current combination is better
+    if currentBestProfit > overallBestProfit
+        overallBestProfit := currentBestProfit
+        overallBestBuy := currentBestBuy
+        overallBestSell := currentBestSell
+        overallBestUseRSI := currentBestUseRSI
+        overallBestUseStochastic := currentBestUseStochastic
+        overallBestUseEma50Cross200 := currentBestUseEma50Cross200
+        overallBestSellType := sellType
+
+// Assign the overall best results to bestBuy and bestSell
+bestBuy = overallBestBuy
+bestSell = overallBestSell
 
 
 // Add alerts
@@ -525,4 +565,3 @@ if showCheckpoints
         lossesCheckpoint3 := losses - lossesCheckpoint1 - lossesCheckpoint2
     
     f_checkpoint_table(profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3)
-
