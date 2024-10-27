@@ -297,7 +297,12 @@ getEmaCrossEmaBuySignal(src, emaFastPeriod, emaSlowPeriod) =>
 
 calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200) =>
     ema = ta.ema(src, 1)
-    sellSignal = ta.crossover(xATRTrailingStop, ema)
+    
+    // Store the low of buy signal bar
+    var float buySignalLow = na
+    // Add a flag to track if we're in a trade during current green ATR phase
+    var bool inGreenPhase = false
+    
     buySignal = true
 
     if useRSI
@@ -315,8 +320,27 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
     if not useRSI and not useStochastic and not useEma200 and not useEma50Cross200
         buySignal := ta.crossover(ema, xATRTrailingStop)
 
-    buy = src > xATRTrailingStop and buySignal
-    sell = sellSignal
+    // Reset inGreenPhase when ATR line turns red
+    if src <= xATRTrailingStop
+        inGreenPhase := false
+        
+    // Only allow buy if we're not already in green phase
+    buy = src > xATRTrailingStop and buySignal and not inGreenPhase
+    
+    // Store the low when we get a buy signal and set green phase flag
+    if buy
+        buySignalLow := low
+        inGreenPhase := true
+    
+    // Sell when either trailing stop is hit or price goes below the buy signal's low
+    sell = ta.crossover(xATRTrailingStop, ema) or (not na(buySignalLow) and close < buySignalLow)
+    
+    // Reset buySignalLow after selling
+    if sell
+        buySignalLow := na
+        // Note: We don't reset inGreenPhase here because we want to prevent new buys
+        // until ATR line turns red
+        
     [buy, sell]
 
 calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useEma200=false, useEma50Cross200=false) =>
@@ -501,3 +525,4 @@ if showCheckpoints
         lossesCheckpoint3 := losses - lossesCheckpoint1 - lossesCheckpoint2
     
     f_checkpoint_table(profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3)
+
