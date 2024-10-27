@@ -1,0 +1,48 @@
+//@version=5
+indicator("Function Variable Reset Demo")
+
+// This function demonstrates the desired behavior
+processSignal(signalType) =>
+    var count = 0  // This will persist across bars
+    count := count + 1  // Increment the counter
+    
+    result = 0
+    if signalType == "ATR_CROSS"
+        result := count * 2
+    else if signalType == "RSI"
+        result := count * 3
+    result
+
+// Method 1: Using separate variables for each signal type (Recommended)
+var atrCount = processSignal("ATR_CROSS")
+var rsiCount = processSignal("RSI")
+
+// Method 2: If you must use array iteration, create separate functions
+atrSignal() =>
+    var count = 0
+    count := count + 1
+    count * 2
+
+rsiSignal() =>
+    var count = 0
+    count := count + 1
+    count * 3
+
+// Create a mapping of signal types to their respective functions
+getSignalValue(signalType) =>
+    if signalType == "ATR_CROSS"
+        atrSignal()
+    else if signalType == "RSI"
+        rsiSignal()
+
+// Now you can safely iterate
+buySignalTypes = array.from("ATR_CROSS", "RSI")
+var results = array.new_float(0)
+if array.size(results) == 0  // Initialize only once
+    for signalType in buySignalTypes
+        value = getSignalValue(signalType)
+        array.push(results, value)
+
+// Plot results for verification
+plot(array.get(results, 0), "ATR_CROSS Result", color.blue)
+plot(array.get(results, 1), "RSI Result", color.green)
