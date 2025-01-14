@@ -545,6 +545,9 @@ calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, back
     [profit, winrate] = backtest_profit(backtestDateStart, backtestDateEnd, buy, sell)
     [buy, sell, profit, winrate]
 
+isBetter(newProfit, newWinrate, bestProfit, bestWinrate, optimizationMetric) =>
+    optimizationMetric == "Profit" ? newProfit > bestProfit : newWinrate > bestWinrate
+
 // ============================= Function declarations ends here =============================
 
 src = close
@@ -570,8 +573,8 @@ bestUseEma50Cross200 = false
 
 // Vanilla buy
 sellType = "ATR_CROSS"
-[buyVanillaAtrCross, sellVanillaAtrCross, profitVanillaAtrCross, winrateVanillaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, true, sellSignalType=sellType)
-if profitVanillaAtrCross > bestProfit
+[buyVanillaAtrCross, sellVanillaAtrCross, profitVanillaAtrCross, winrateVanillaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, false, sellSignalType=sellType)
+if isBetter(profitVanillaAtrCross, winrateVanillaAtrCross, bestProfit, bestWinrate, optimizationMetric)
     bestProfit := profitVanillaAtrCross
     bestWinrate := winrateVanillaAtrCross
     bestBuy := buyVanillaAtrCross
@@ -582,8 +585,8 @@ if profitVanillaAtrCross > bestProfit
 
 // Stochastic buy
 sellType := "ATR_CROSS"
-[buyStochasticAtrCross, sellStochasticAtrCross, profitStochasticAtrCross, winrateStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, true,  sellSignalType=sellType)
-if profitStochasticAtrCross > bestProfit
+[buyStochasticAtrCross, sellStochasticAtrCross, profitStochasticAtrCross, winrateStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, false,  sellSignalType=sellType)
+if isBetter(profitStochasticAtrCross, winrateStochasticAtrCross, bestProfit, bestWinrate, optimizationMetric)
     bestProfit := profitStochasticAtrCross
     bestWinrate := winrateStochasticAtrCross
     bestBuy := buyStochasticAtrCross
@@ -594,8 +597,8 @@ if profitStochasticAtrCross > bestProfit
 
 // RSI buy signal
 sellType := "ATR_CROSS"
-[buyRSIAtrCross, sellRSIAtrCross, profitRSIAtrCross, winrateRSIAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, true, sellSignalType=sellType)
-if profitRSIAtrCross > bestProfit
+[buyRSIAtrCross, sellRSIAtrCross, profitRSIAtrCross, winrateRSIAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, false, sellSignalType=sellType)
+if isBetter(profitRSIAtrCross, winrateRSIAtrCross, bestProfit, bestWinrate, optimizationMetric)
     bestProfit := profitRSIAtrCross
     bestWinrate := winrateRSIAtrCross
     bestBuy := buyRSIAtrCross
@@ -606,8 +609,8 @@ if profitRSIAtrCross > bestProfit
 
 // RSIStochastic buy signal
 sellType := "ATR_CROSS"
-[buyRSIStochasticAtrCross, sellRSIStochasticAtrCross, profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, true, sellSignalType=sellType)
-if profitRSIStochasticAtrCross > bestProfit
+[buyRSIStochasticAtrCross, sellRSIStochasticAtrCross, profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, false, sellSignalType=sellType)
+if isBetter(profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross, bestProfit, bestWinrate, optimizationMetric)
     bestProfit := profitRSIStochasticAtrCross
     bestWinrate := winrateRSIStochasticAtrCross
     bestBuy := buyRSIStochasticAtrCross
@@ -622,7 +625,7 @@ if useEma50Cross200
     sellType := "ATR_CROSS"
     [buyEma50Cross200AtrCross, sellEma50Cross200AtrCross, profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseEma200, useEma50Cross200, sellSignalType=sellType)
     
-    if profitEma50Cross200AtrCross > bestProfit
+    if isBetter(profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross, bestProfit, bestWinrate, optimizationMetric)
         bestBuy := buyEma50Cross200AtrCross
         bestSell := sellEma50Cross200AtrCross
         bestProfit := profitEma50Cross200AtrCross
