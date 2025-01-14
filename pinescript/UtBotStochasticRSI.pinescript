@@ -189,6 +189,7 @@ showBacktest = input(true, title='Show backtest result')
 showCheckpoints = input(false, title='Show checkpoints results')
 showBuySell = input(false, title='Show Buy/Sell signal')
 lowRiskEntry = input(false, title='Low-Risk Entry')
+optimizationMetric = input.string("Profit", title="Optimization Metric", options=["Profit", "Winrate"])
 
 backtestDateStart = input.time(title="Backtest Start Date", defval=timestamp("2021-07-28"))
 checkpointDate1 = input.time(title="First Checkpoint Date", defval=timestamp("2022-07-28"))
@@ -483,7 +484,10 @@ getEmaCrossEmaBuySignal(src, emaFastPeriod, emaSlowPeriod) =>
     emaSlow = ta.ema(src, emaSlowPeriod)
     emaCrossEmaBuySignal = emaFast>emaSlow
 
-calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, sellSignalType) =>
+getFramaBuySignal() =>
+    framaBuySignal = hlc3 > Filt1 and barstate.isconfirmed
+
+calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, useFrama,sellSignalType) =>
     ema = ta.ema(src, 1)
     
     // Store the low of buy signal bar
@@ -507,6 +511,9 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
 
     if not useRSI and not useStochastic and not useEma200 and not useEma50Cross200
         buySignal := ta.crossover(ema, xATRTrailingStop)
+    
+    if useFrama
+        buySignal := buySignal and getFramaBuySignal()
 
     // Reset inGreenPhase when ATR line turns red
     if src <= xATRTrailingStop
@@ -533,8 +540,8 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
         
     [buy, sell]
 
-calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useEma200=false, useEma50Cross200=false, sellSignalType="ATR_CROSS") =>
-    [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, sellSignalType)
+calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useFrama, useEma200=false, useEma50Cross200=false, sellSignalType="ATR_CROSS") =>
+    [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, useFrama, sellSignalType)
     [profit, winrate] = backtest_profit(backtestDateStart, backtestDateEnd, buy, sell)
     [buy, sell, profit, winrate]
 
@@ -563,7 +570,7 @@ bestUseEma50Cross200 = false
 
 // Vanilla buy
 sellType = "ATR_CROSS"
-[buyVanillaAtrCross, sellVanillaAtrCross, profitVanillaAtrCross, winrateVanillaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, sellSignalType=sellType)
+[buyVanillaAtrCross, sellVanillaAtrCross, profitVanillaAtrCross, winrateVanillaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, true, sellSignalType=sellType)
 if profitVanillaAtrCross > bestProfit
     bestProfit := profitVanillaAtrCross
     bestWinrate := winrateVanillaAtrCross
@@ -575,7 +582,7 @@ if profitVanillaAtrCross > bestProfit
 
 // Stochastic buy
 sellType := "ATR_CROSS"
-[buyStochasticAtrCross, sellStochasticAtrCross, profitStochasticAtrCross, winrateStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, sellSignalType=sellType)
+[buyStochasticAtrCross, sellStochasticAtrCross, profitStochasticAtrCross, winrateStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, true,  sellSignalType=sellType)
 if profitStochasticAtrCross > bestProfit
     bestProfit := profitStochasticAtrCross
     bestWinrate := winrateStochasticAtrCross
@@ -587,7 +594,7 @@ if profitStochasticAtrCross > bestProfit
 
 // RSI buy signal
 sellType := "ATR_CROSS"
-[buyRSIAtrCross, sellRSIAtrCross, profitRSIAtrCross, winrateRSIAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, sellSignalType=sellType)
+[buyRSIAtrCross, sellRSIAtrCross, profitRSIAtrCross, winrateRSIAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, true, sellSignalType=sellType)
 if profitRSIAtrCross > bestProfit
     bestProfit := profitRSIAtrCross
     bestWinrate := winrateRSIAtrCross
@@ -599,7 +606,7 @@ if profitRSIAtrCross > bestProfit
 
 // RSIStochastic buy signal
 sellType := "ATR_CROSS"
-[buyRSIStochasticAtrCross, sellRSIStochasticAtrCross, profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, sellSignalType=sellType)
+[buyRSIStochasticAtrCross, sellRSIStochasticAtrCross, profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, true, sellSignalType=sellType)
 if profitRSIStochasticAtrCross > bestProfit
     bestProfit := profitRSIStochasticAtrCross
     bestWinrate := winrateRSIStochasticAtrCross
