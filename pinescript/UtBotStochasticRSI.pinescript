@@ -554,15 +554,28 @@ src = close
 xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
 
 // Placeholders
-bool bestBuy = na
-bool bestSell = na
 float bestProfit = -100000
 bestWinrate = 0.0
-bestUseRSI = false
-bestUseStochastic = false
-bestUseFrama = false
+
+bool bestBuyProfit = na
+bool bestBuyWinrate = na
+
+bool bestSellProfit = na
+bool bestSellWinrate = na
+
+bestUseRSIProfit = false
+bestUseRSIWinrate = false
+
+bestUseStochasticProfit = false
+bestUseStochasticWinrate = false
+
+bestUseFramaProfit = false
+bestUseFramaWinrate = false
+
 bestUseEma200 = false
-bestUseEma50Cross200 = false
+
+bestUseEma50Cross200Profit = false
+bestUseEma50Cross200Winrate = false
 
 // "ATR_CROSS", "CLOSE_BELOW", "LOW_BELOW"
 // Calculate and backtest buy sell signals given all combination of useRsi and useStochastic
@@ -575,121 +588,297 @@ bestUseEma50Cross200 = false
 // Vanilla buy
 sellType = "ATR_CROSS"
 [buyVanillaAtrCross, sellVanillaAtrCross, profitVanillaAtrCross, winrateVanillaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, false, sellSignalType=sellType)
-if isBetter(profitVanillaAtrCross, winrateVanillaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitVanillaAtrCross > bestProfit
     bestProfit := profitVanillaAtrCross
+
+    bestBuyProfit := buyVanillaAtrCross
+    bestSellProfit := sellVanillaAtrCross
+    bestUseRSIProfit := false
+    bestUseStochasticProfit := false
+    bestUseFramaProfit := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
+
+if winrateVanillaAtrCross > bestWinrate
     bestWinrate := winrateVanillaAtrCross
-    bestBuy := buyVanillaAtrCross
-    bestSell := sellVanillaAtrCross
-    bestUseRSI := false
-    bestUseStochastic := false
-    bestUseFrama := false
-    log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
+
+    bestBuyWinrate := buyVanillaAtrCross
+    bestSellWinrate := sellVanillaAtrCross
+    bestUseRSIWinrate := false
+    bestUseStochasticWinrate := false
+    bestUseFramaWinrate := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
 
 // Frama buy
 sellType := "ATR_CROSS"
 [buyFramaAtrCross, sellFramaAtrCross, profitFramaAtrCross, winrateFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, true, sellSignalType=sellType)
-if isBetter(profitFramaAtrCross, winrateFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitFramaAtrCross > bestProfit
     bestProfit := profitFramaAtrCross
+
+    bestBuyProfit := buyFramaAtrCross
+    bestSellProfit := sellFramaAtrCross
+    bestUseRSIProfit := false
+    bestUseStochasticProfit := false
+    bestUseFramaProfit := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
+
+if winrateFramaAtrCross > bestWinrate
     bestWinrate := winrateFramaAtrCross
-    bestBuy := buyFramaAtrCross
-    bestSell := sellFramaAtrCross
-    bestUseRSI := false
-    bestUseStochastic := false
-    bestUseFrama := true
-    log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
+
+    bestBuyWinrate := buyFramaAtrCross
+    bestSellWinrate := sellFramaAtrCross
+    bestUseRSIWinrate := false
+    bestUseStochasticWinrate := false
+    bestUseFramaWinrate := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
 
 // Stochastic buy
 sellType := "ATR_CROSS"
 [buyStochasticAtrCross, sellStochasticAtrCross, profitStochasticAtrCross, winrateStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, false,  sellSignalType=sellType)
-if isBetter(profitStochasticAtrCross, winrateStochasticAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitStochasticAtrCross > bestProfit
     bestProfit := profitStochasticAtrCross
+
+    bestBuyProfit := buyStochasticAtrCross
+    bestSellProfit := sellStochasticAtrCross
+    bestUseRSIProfit := false
+    bestUseStochasticProfit := true
+    bestUseFramaProfit := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+if winrateStochasticAtrCross > bestWinrate
     bestWinrate := winrateStochasticAtrCross
-    bestBuy := buyStochasticAtrCross
-    bestSell := sellStochasticAtrCross
-    bestUseRSI := false
-    bestUseStochastic := true
-    bestUseFrama := false
-    log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+    bestBuyWinrate := buyStochasticAtrCross
+    bestSellWinrate := sellStochasticAtrCross
+    bestUseRSIWinrate := false
+    bestUseStochasticWinrate := true
+    bestUseFramaWinrate := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
 
 // Stochastic Frama buy
 sellType := "ATR_CROSS"
 [buyStochasticFramaAtrCross, sellStochasticFramaAtrCross, profitStochasticFramaAtrCross, winrateStochasticFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, true, sellSignalType=sellType)
-if isBetter(profitStochasticFramaAtrCross, winrateStochasticFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitStochasticFramaAtrCross > bestProfit
     bestProfit := profitStochasticFramaAtrCross
+    
+    bestBuyProfit := buyStochasticFramaAtrCross
+    bestSellProfit := sellStochasticFramaAtrCross
+    bestUseRSIProfit := false
+    bestUseStochasticProfit := true
+    bestUseFramaProfit := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+if winrateStochasticFramaAtrCross > bestWinrate
     bestWinrate := winrateStochasticFramaAtrCross
-    bestBuy := buyStochasticFramaAtrCross
-    bestSell := sellStochasticFramaAtrCross
-    bestUseRSI := false
-    bestUseStochastic := true
-    bestUseFrama := true
-    log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+    bestBuyWinrate := buyStochasticFramaAtrCross
+    bestSellWinrate := sellStochasticFramaAtrCross
+    bestUseRSIWinrate := false
+    bestUseStochasticWinrate := true
+    bestUseFramaWinrate := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
 
 // RSI buy signal
 sellType := "ATR_CROSS"
 [buyRSIAtrCross, sellRSIAtrCross, profitRSIAtrCross, winrateRSIAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, false, sellSignalType=sellType)
-if isBetter(profitRSIAtrCross, winrateRSIAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitRSIAtrCross > bestProfit
     bestProfit := profitRSIAtrCross
+    
+    bestBuyProfit := buyRSIAtrCross
+    bestSellProfit := sellRSIAtrCross
+    bestUseRSIProfit := true
+    bestUseStochasticProfit := false
+    bestUseFramaProfit := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+if winrateRSIAtrCross > bestWinrate
     bestWinrate := winrateRSIAtrCross
-    bestBuy := buyRSIAtrCross
-    bestSell := sellRSIAtrCross
-    bestUseRSI := true
-    bestUseStochastic := false
-    bestUseFrama := false
-    log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+    
+    bestBuyWinrate := buyRSIAtrCross
+    bestSellWinrate := sellRSIAtrCross
+    bestUseRSIWinrate := true
+    bestUseStochasticWinrate := false
+    bestUseFramaWinrate := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
 
 // RSI Frama buy signal
 sellType := "ATR_CROSS"
 [buyRSIFramaAtrCross, sellRSIFramaAtrCross, profitRSIFramaAtrCross, winrateRSIFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, true, sellSignalType=sellType)
-if isBetter(profitRSIFramaAtrCross, winrateRSIFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitRSIFramaAtrCross > bestProfit
     bestProfit := profitRSIFramaAtrCross
+    
+    bestBuyProfit := buyRSIFramaAtrCross
+    bestSellProfit := sellRSIFramaAtrCross
+    bestUseRSIProfit := true
+    bestUseStochasticProfit := false
+    bestUseFramaProfit := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+if winrateRSIFramaAtrCross > bestWinrate
     bestWinrate := winrateRSIFramaAtrCross
-    bestBuy := buyRSIFramaAtrCross
-    bestSell := sellRSIFramaAtrCross
-    bestUseRSI := true
-    bestUseStochastic := false
-    bestUseFrama := true
-    log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+    
+    bestBuyWinrate := buyRSIFramaAtrCross
+    bestSellWinrate := sellRSIFramaAtrCross
+    bestUseRSIWinrate := true
+    bestUseStochasticWinrate := false
+    bestUseFramaWinrate := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
 
 // RSIStochastic buy signal
 sellType := "ATR_CROSS"
 [buyRSIStochasticAtrCross, sellRSIStochasticAtrCross, profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, false, sellSignalType=sellType)
-if isBetter(profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitRSIStochasticAtrCross > bestProfit
     bestProfit := profitRSIStochasticAtrCross
+    
+    bestBuyProfit := buyRSIStochasticAtrCross
+    bestSellProfit := sellRSIStochasticAtrCross
+    bestUseRSIProfit := true
+    bestUseStochasticProfit := true
+    bestUseFramaProfit := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
+
+if winrateRSIStochasticAtrCross > bestWinrate
     bestWinrate := winrateRSIStochasticAtrCross
-    bestBuy := buyRSIStochasticAtrCross
-    bestSell := sellRSIStochasticAtrCross
-    bestUseRSI := true
-    bestUseStochastic := true
-    bestUseFrama := false
-    log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
+    
+    bestBuyWinrate := buyRSIStochasticAtrCross
+    bestSellWinrate := sellRSIStochasticAtrCross
+    bestUseRSIWinrate := true
+    bestUseStochasticWinrate := true
+    bestUseFramaWinrate := false
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
 
 // RSIStochastic Frama buy signal
 sellType := "ATR_CROSS"
 [buyRSIStochasticFramaAtrCross, sellRSIStochasticFramaAtrCross, profitRSIStochasticFramaAtrCross, winrateRSIStochasticFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, true, sellSignalType=sellType)
-if isBetter(profitRSIStochasticFramaAtrCross, winrateRSIStochasticFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+if profitRSIStochasticFramaAtrCross > bestProfit
     bestProfit := profitRSIStochasticFramaAtrCross
+    
+    bestBuyProfit := buyRSIStochasticFramaAtrCross
+    bestSellProfit := sellRSIStochasticFramaAtrCross
+    bestUseRSIProfit := true
+    bestUseStochasticProfit := true
+    bestUseFramaProfit := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
+
+if winrateRSIStochasticFramaAtrCross > bestWinrate
     bestWinrate := winrateRSIStochasticFramaAtrCross
-    bestBuy := buyRSIStochasticFramaAtrCross
-    bestSell := sellRSIStochasticFramaAtrCross
-    bestUseRSI := true
-    bestUseStochastic := true
-    bestUseFrama := true
-    log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
+    
+    bestBuyWinrate := buyRSIStochasticFramaAtrCross
+    bestSellWinrate := sellRSIStochasticFramaAtrCross
+    bestUseRSIWinrate := true
+    bestUseStochasticWinrate := true
+    bestUseFramaWinrate := true
+    // log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
 
 // LowRiskEntry buy signal
-useEma50Cross200 = lowRiskEntry
-if useEma50Cross200
-    sellType := "ATR_CROSS"
-    [buyEma50Cross200AtrCross, sellEma50Cross200AtrCross, profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseFrama, bestUseEma200, useEma50Cross200, sellSignalType=sellType)
+// useEma50Cross200 = lowRiskEntry
+// if useEma50Cross200
+//     sellType := "ATR_CROSS"
+//     [buyEma50Cross200AtrCross, sellEma50Cross200AtrCross, profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseFrama, bestUseEma200, useEma50Cross200, sellSignalType=sellType)
     
-    if isBetter(profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross, bestProfit, bestWinrate, optimizationMetric)
-        bestBuy := buyEma50Cross200AtrCross
-        bestSell := sellEma50Cross200AtrCross
-        bestProfit := profitEma50Cross200AtrCross
-        bestWinrate := winrateEma50Cross200AtrCross
-        bestUseEma50Cross200 := true
-        log.info("bestProfit, bestBuy, bestSell, sellType, winrateEma50Cross200: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateEma50Cross200AtrCross, "#.##"))
+//     if profitEma50Cross200AtrCross > bestProfit
+//         bestProfit := profitEma50Cross200AtrCross
+        
+//         bestBuyProfit := buyEma50Cross200AtrCross
+//         bestSellProfit := sellEma50Cross200AtrCross
+//         bestUseEma50Cross200Profit := true
+//         // log.info("bestProfit, bestBuy, bestSell, sellType, winrateEma50Cross200: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateEma50Cross200AtrCross, "#.##"))
+    
+//     if winrateEma50Cross200AtrCross > bestWinrate
+//         bestWinrate := winrateEma50Cross200AtrCross
+        
+//         bestBuyWinrate := buyEma50Cross200AtrCross
+//         bestSellWinrate := sellEma50Cross200AtrCross
+//         bestUseEma50Cross200Winrate := true
+//         // log.info("bestProfit, bestBuy, bestSell, sellType, winrateEma50Cross200: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateEma50Cross200AtrCross, "#.##"))
 
+initialCapital = 1000.00
+
+// bestBuy = bestBuyWinrate
+// bestSell = bestSellWinrate
+// [profitPerc, openBalance, winrate, entries, exits, wins, losses] = do_transaction(backtestDateStart, backtestDateEnd, bestBuy, bestSell, _initial_capital=initialCapital)
+
+
+[profitPercProfit, winrateProfit] = backtest_profit(backtestDateStart, backtestDateEnd, bestBuyProfit, bestSellProfit, _initial_capital=initialCapital)
+[profitPercWinrate, winrateWinrate] = backtest_profit(backtestDateStart, backtestDateEnd, bestBuyWinrate, bestSellWinrate, _initial_capital=initialCapital)
+
+log.info("#@########profitPercProfit=" + str.tostring((profitPercProfit)) + "profitPercWinrate=" + str.tostring(profitPercWinrate) + "#@@#########")
+log.info("#@########winrateProfit=" + str.tostring((winrateProfit)) + "winrateWinrate=" + str.tostring(winrateWinrate) + "#@@#########")
+log.info(str.tostring(profitPercProfit))
+log.info(str.tostring(profitPercWinrate))
+
+float profitPerc = na
+float openBalance = na
+float winrate = na
+int entries = na
+int exits = na
+int wins = na
+int losses = na
+bool bestBuy = na
+bool bestSell = na
+
+// It gets fixed with if true/false
+if winrateProfit > winrateWinrate
+    log.info("winrateProfit > winrateWinrate")
+    [profitPercProfit, openBalanceProfit, winrateProfit, entriesProfit, exitsProfit, winsProfit, lossesProfit] = do_transaction(backtestDateStart, backtestDateEnd, bestBuyProfit, bestSellProfit, _initial_capital=initialCapital, _chart=true)
+
+    log.info("######### print metrics winrateProfit > winrateWinrate #########")
+    log.info(str.tostring(profitPercProfit))
+    log.info(str.tostring(openBalanceProfit))
+    log.info(str.tostring(winrateProfit))
+    log.info(str.tostring(entriesProfit))
+    log.info(str.tostring(exitsProfit))
+    log.info(str.tostring(winsProfit))
+    log.info(str.tostring(lossesProfit))
+    log.info(str.tostring(bestBuyProfit))
+    log.info(str.tostring(bestSellProfit))
+    log.info("######### printed metrics winrateProfit > winrateWinrate #########")
+
+    profitPerc := profitPercProfit
+    openBalance := openBalanceProfit
+    winrate := winrateProfit
+    entries := entriesProfit
+    exits := exitsProfit
+    wins := winsProfit
+    losses := lossesProfit
+    bestBuy := bestBuyProfit
+    bestSell := bestSellProfit
+else
+    log.info("winrateProfit < winrateWinrate")
+    [profitPercWinrate, openBalanceWinrate, winrateWinrate, entriesWinrate, exitsWinrate, winsWinrate, lossesWinrate] = do_transaction(backtestDateStart, backtestDateEnd, bestBuyWinrate, bestSellWinrate, _initial_capital=initialCapital, _chart=true)
+
+    log.info("######### print metrics winrateProfit < winrateWinrate #########")
+    log.info(str.tostring(profitPercWinrate))
+    log.info(str.tostring(openBalanceWinrate))
+    log.info(str.tostring(winrateWinrate))
+    log.info(str.tostring(entriesWinrate))
+    log.info(str.tostring(exitsWinrate))
+    log.info(str.tostring(winsWinrate))
+    log.info(str.tostring(lossesWinrate))
+    log.info(str.tostring(bestBuyWinrate))
+    log.info(str.tostring(bestSellWinrate))
+    log.info("######### printed metrics winrateProfit < winrateWinrate #########")
+
+    profitPerc := profitPercWinrate
+    openBalance := openBalanceWinrate
+    winrate := winrateWinrate
+    entries := entriesWinrate
+    exits := exitsWinrate
+    wins := winsWinrate
+    losses := lossesWinrate
+    bestBuy := bestBuyWinrate
+    bestSell := bestSellWinrate
+
+log.info("######### print metrics #########")
+log.info(str.tostring(profitPerc))
+log.info(str.tostring(openBalance))
+log.info(str.tostring(winrate))
+log.info(str.tostring(entries))
+log.info(str.tostring(exits))
+log.info(str.tostring(wins))
+log.info(str.tostring(losses))
+log.info(str.tostring(bestBuy))
+log.info(str.tostring(bestSell))
+log.info("######### printed metrics #########")
 
 // ============================= Best buy sell logic ends here =============================
 
@@ -731,9 +920,14 @@ enclosedArea = src > xATRTrailingStop ? (src < emaFast ? true : false) : (src > 
 bgcolor(enclosedArea ? (src > emaFast ? color.new(color.green, 90) : color.new(color.red, 90)) : na)
 
 stockGrowth = calculatePriceGrowth(backtestDateStart, backtestDateEnd)
-initialCapital = 1000.00
+// initialCapital = 1000.00
 
-[profitPerc, openBalance, winrate, entries, exits, wins, losses] = do_transaction(backtestDateStart, backtestDateEnd, bestBuy, bestSell, _initial_capital=initialCapital)
+// [profitPerc, openBalance, winrate, entries, exits, wins, losses] = do_transaction(backtestDateStart, backtestDateEnd, bestBuy, bestSell, _initial_capital=initialCapital)
+// todo
+// do_transaction 2 times - 1 for optimizationMetric = "winrate" and 1 for optimizationMetric = "profit"
+// Whichever is the best one based on winrate. use that one to plot the tables
+// plot buy sell signal after the best one is found using do_transaction
+
 
 // It plots the profit table
 if showBacktest    
