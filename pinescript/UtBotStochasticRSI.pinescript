@@ -23,7 +23,7 @@ color color2     = input.color(color.rgb(39, 114, 226), "Down", group = group, i
 color color3     = input.color(#a2b5ca, "Neutral", group = group) // Color for neutral state
 var color color  = color(na) // Variable to hold the current color
 
-bool  candles    = input.bool  (true, "Color Candles") // Toggle for coloring candles based on momentum
+bool  candles    = input.bool  (false, "Color Candles") // Toggle for coloring candles based on momentum
 
 // Source for FRAMA calculation
 series float price = hl2 // Use hl2 as the default source
@@ -181,6 +181,7 @@ plotcandle(
 
 // =================== Inputs starts here ===================
 
+optimizationMetric = input.string("Profit", title="Optimization Metric", options=["Profit", "Winrate"])
 atrSensitivity = input(2, title='Atr sensitivity') 
 atrPeriod = input(3, title='ATR Period')
 emaFastPeriod = input(9, title='Fast EMA Period')
@@ -189,7 +190,6 @@ showBacktest = input(true, title='Show backtest result')
 showCheckpoints = input(false, title='Show checkpoints results')
 showBuySell = input(false, title='Show Buy/Sell signal')
 lowRiskEntry = input(false, title='Low-Risk Entry')
-optimizationMetric = input.string("Profit", title="Optimization Metric", options=["Profit", "Winrate"])
 
 backtestDateStart = input.time(title="Backtest Start Date", defval=timestamp("2021-07-28"))
 checkpointDate1 = input.time(title="First Checkpoint Date", defval=timestamp("2022-07-28"))
