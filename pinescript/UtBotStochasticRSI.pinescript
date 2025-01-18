@@ -1,14 +1,159 @@
 //@version=5
 
-// Integration of backtest library
-import DinGrogu/backtest/1 as backtest
-
-
 indicator(title='UT Bot Stochastic RSI', overlay=true)
 
+
+// ========================= Frama Channel logic starts here =========================
+
+// courtsey: BigBeluga
+// https://in.tradingview.com/script/hskyfPWP-FRAMA-Channel-BigBeluga/
+
+
+// ＩＮＰＵＴＳ --------------------------------------------------------------------------------------------------------{
+// User Inputs for FRAMA Channel
+int    N          = input.int   (26, title="Length", minval=2, step = 2, group = "Channel") // Length for FRAMA calculation
+float  distance   = input.float (1.5, "Bands Distance", step = 0.01, minval = 0.3, group = "Channel") // Distance for channel bands
+string price_vol  = input.string("Average Volume", "Signals Data", ["Price", "Average Volume"]) // Source data for signals
+string labl_size  = input.string("Small", "Lables Size", ["Small", "Normal", "Large"])
+
+// Colors
+group = "Colors"
+color color1     = input.color(#27e27b, "Momentum Up", group = group, inline = "1") // Color for upward momentum
+color color2     = input.color(color.rgb(39, 114, 226), "Down", group = group, inline = "1") // Color for downward momentum
+color color3     = input.color(#a2b5ca, "Neutral", group = group) // Color for neutral state
+var color color  = color(na) // Variable to hold the current color
+
+bool candles    = input.bool  (false, "Color Candles") // Toggle for coloring candles based on momentum
+bool showFramaChannel    = input.bool  (false, "Show Frama Channel") // Toggle for coloring candles based on momentum
+
+// Source for FRAMA calculation
+series float price = hl2 // Use hl2 as the default source
+
+// Variables for FRAMA calculation
+var float Filt   = na
+var float Filt1  = na
+var float Filt2  = na
+// }
+
+// UDTs----------------------------------------------------------------------------------------------------------------{
+// Define a user-defined type (UDT) to store variables used in FRAMA calculation
+type vars 
+    float N1
+    float N2
+    float N3
+    float HH
+    float LL
+    float Dimen 
+    float alpha
+
+// Initialize UDT instance
+v = vars.new(0., 0., 0., 0., 0., 0., 0.)
+// }
+
+
+// ＣＡＬＣＵＬＡＴＩＯＮＳ----------------------------------------------------------------------------------------------{
+// Perform calculations for the FRAMA Channel
+series float volatility = ta.sma(high - low, 200) // Calculate volatility using the average true range
+series float p_vol      = switch price_vol // Select the data source for signals (Price or Average Volume)
+    "Price"             => close
+    "Average Volume"    => math.round(math.sum(volume, 10) / 100000, 2)
+
+// Calculate N3 for the fractal dimension
+v.N3 := (ta.highest(high, N) - ta.lowest(low, N)) / N
+
+// Loop to calculate N1
+v.HH := high
+v.LL := low
+
+for count = 0 to N / 2 - 1
+    if high[count] > v.HH
+        v.HH := high[count]
+    if low[count] < v.LL
+        v.LL := low[count]
+
+v.N1 := (v.HH - v.LL) / (N / 2)
+
+// Loop to calculate N2
+v.HH := high[N / 2]
+v.LL := low[N / 2]
+
+for count = N / 2 to N - 1
+    if high[count] > v.HH
+        v.HH := high[count]
+    if low[count] < v.LL
+        v.LL := low[count]
+
+v.N2 := (v.HH - v.LL) / (N / 2)
+
+// Calculate the fractal dimension
+if (v.N1 > 0 and v.N2 > 0 and v.N3 > 0)
+    v.Dimen := (math.log(v.N1 + v.N2) - math.log(v.N3)) / math.log(2)
+
+// Calculate alpha for FRAMA
+v.alpha := math.exp(-4.6 * (v.Dimen - 1))
+v.alpha := math.max(math.min(v.alpha, 1), 0.01) // Clamp alpha between 0.01 and 1
+
+// Calculate the FRAMA filtered value
+Filt  := na(Filt) 
+          ? price 
+          : v.alpha * price + (1 - v.alpha) * Filt[1]
+
+Filt  := ta.sma((bar_index < N + 1) ? price : Filt, 5) // Apply SMA for smoothing
+
+// Calculate the channel bands
+Filt1 := Filt + volatility * distance
+Filt2 := Filt - volatility * distance
+
+
+// ＰＬＯＴ-------------------------------------------------------------------------------------------------------------{
+// Define conditions for plotting and coloring
+break_up = ta.crossover(hlc3, Filt1) and barstate.isconfirmed
+break_dn = ta.crossunder(hlc3, Filt2) and barstate.isconfirmed
+
+if ta.cross(close, Filt)
+    color := color3 // Neutral color 
+
+// Determine the color based on breakout conditions
+switch 
+    break_up => color := color1 // Upward breakout
+    break_dn => color := color2 // Downward breakout
+
+// Set candle color if enabled
+color color_c = candles ? color : na
+
+// Plot the FRAMA and bands
+p0 = plot(showFramaChannel ? Filt : na,  color = color.new(color,color == color3 ? 100 : 50),  editable = false)
+p1 = plot(showFramaChannel ? Filt1 : na, color = color.new(color,20), linewidth = 1, editable = false)
+p2 = plot(showFramaChannel ? Filt2 : na, color = color.new(color,20), linewidth = 1, editable = false)
+
+// Fill the area between the bands and FRAMA
+fill(p1, p0, showFramaChannel ? Filt1 : na, showFramaChannel ? Filt : na, color.new(color, candles ? 95 : 85), na, editable = false)
+fill(p0, p2, showFramaChannel ? Filt : na, showFramaChannel ? Filt2 : na, na, color.new(color, candles ? 95 : 85), editable = false)
+
+size = switch labl_size
+    "Small"  => size.small
+    "Normal" => size.normal
+    "Large"  => size.large
+
+// Plot candles with the calculated colors
+plotcandle(
+             open, high, low, close, 
+             "Candles", 
+             color_c,
+             color_c, 
+             bordercolor = color_c, 
+             editable    = false
+             )
+
+
+// ===================================== UtBotStochasticRsi logic starts here =========================
+
+// =================== Inputs starts here ===================
+
+optimizationMetric = input.string("Profit", title="Optimization Metric", options=["Profit", "Winrate"])
 atrSensitivity = input(2, title='Atr sensitivity') 
 atrPeriod = input(3, title='ATR Period')
-emaFastPeriod = input(9, title='Fast EMA Period')
+emaFastPeriod = input(10, title='Fast EMA Period')
 emaSlowPeriod = input(20, title='Slow EMA Period')
 showBacktest = input(true, title='Show backtest result')
 showCheckpoints = input(false, title='Show checkpoints results')
@@ -19,6 +164,8 @@ backtestDateStart = input.time(title="Backtest Start Date", defval=timestamp("20
 checkpointDate1 = input.time(title="First Checkpoint Date", defval=timestamp("2022-07-28"))
 checkpointDate2 = input.time(title="Second Checkpoint Date", defval=timestamp("2023-07-28"))
 backtestDateEnd = input.time(title="Backtest End Date", defval=timestamp("2050-07-28"))
+
+// =================== Inputs ends here ===================
 
 
 // Courtsey: https://www.tradingview.com/script/tsHCuCEi-Backtest-Strategy-Optimizer-Adapter/
@@ -234,6 +381,13 @@ f_backtest_main(_date_start, _date_end, _entry_signal, _exit_signal, _take_profi
 do_transaction(int _date_start, int _date_end, bool _entry_signal, bool _exit_signal, simple float _take_profit_percentage=0.0, simple float _stop_loss_percentage=0.0, simple int _atr_length=0, float _initial_capital=1000.00, float _order_size=100, float _commission=0.0, bool _on_bar_close=true, series float _high=high, series float _low=low, series float _src=close, simple bool _chart=true) =>
     [profit_perc, open_balance, winrate, entries, exits, wins, losses] = f_backtest_main(_date_start, _date_end, _entry_signal, _exit_signal, _take_profit_percentage, _stop_loss_percentage, _atr_length, _initial_capital, _order_size, _commission, _on_bar_close, _high, _low, _src, _chart)
 
+
+backtest_profit(int _date_start, int _date_end, bool _entry_signal, bool _exit_signal, simple float _take_profit_percentage=0.0, simple float _stop_loss_percentage=0.0, simple int _atr_length=0, float _initial_capital=1000.00, float _order_size=100, float _commission=0.0, bool _on_bar_close=true, series float _high=high, series float _low=low, series float _src=close, simple bool _chart=false) =>
+    [profit_perc, open_balance, winrate, entries, exits, wins, losses] = f_backtest_main(_date_start, _date_end, _entry_signal, _exit_signal, _take_profit_percentage, _stop_loss_percentage, _atr_length, _initial_capital, _order_size, _commission, _on_bar_close, _high, _low, _src, _chart)
+    [profit_perc, winrate]
+
+// =================== Calculate ATR Trailing Stop starts here ===================
+
 calculateATRTrailingStop(src, atrSensitivity, atrPeriod) =>
     xATR = ta.atr(atrPeriod)
     nLoss = atrSensitivity * xATR
@@ -243,6 +397,8 @@ calculateATRTrailingStop(src, atrSensitivity, atrPeriod) =>
     iff_2 = src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), src + nLoss) : iff_1
     xATRTrailingStop := src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), src - nLoss) : iff_2
     xATRTrailingStop
+
+// =================== Calculate Price Growth starts here ===================
 
 calculatePriceGrowth(backtestDateStart, backtestDateEnd) =>
     var float firstPrice = na
@@ -262,6 +418,8 @@ calculatePriceGrowth(backtestDateStart, backtestDateEnd) =>
         priceGrowth := (lastPrice - firstPrice) / firstPrice * 100
     
     priceGrowth
+
+// =================== Buy Sell signals starts here ===================
 
 getStochasticBuySignal(src, periodK, smoothK, periodD) =>
     var globalKCrossD = false
@@ -295,9 +453,17 @@ getEmaCrossEmaBuySignal(src, emaFastPeriod, emaSlowPeriod) =>
     emaSlow = ta.ema(src, emaSlowPeriod)
     emaCrossEmaBuySignal = emaFast>emaSlow
 
-calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200) =>
+getFramaBuySignal() =>
+    framaBuySignal = hlc3 > Filt1 and barstate.isconfirmed
+
+calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, useFrama,sellSignalType) =>
     ema = ta.ema(src, 1)
-    sellSignal = ta.crossover(xATRTrailingStop, ema)
+    
+    // Store the low of buy signal bar
+    var float buySignalLow = na
+    // Add a flag to track if we're in a trade during current green ATR phase
+    var bool inGreenPhase = false
+    
     buySignal = true
 
     if useRSI
@@ -314,77 +480,187 @@ calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, 
 
     if not useRSI and not useStochastic and not useEma200 and not useEma50Cross200
         buySignal := ta.crossover(ema, xATRTrailingStop)
+    
+    if useFrama
+        buySignal := buySignal and getFramaBuySignal()
 
-    buy = src > xATRTrailingStop and buySignal
-    sell = sellSignal
+    // Reset inGreenPhase when ATR line turns red
+    if src <= xATRTrailingStop
+        inGreenPhase := false
+        
+    // Only allow buy if we're not already in green phase
+    buy = src > xATRTrailingStop and buySignal and not inGreenPhase
+    
+    // Store the low when we get a buy signal and set green phase flag
+    if buy
+        buySignalLow := low
+        inGreenPhase := true
+    
+    // Different sell signal types
+    sell = switch sellSignalType
+        "ATR_CROSS" => ta.crossover(xATRTrailingStop, ema)  // Always included
+        "CLOSE_BELOW" => ta.crossover(xATRTrailingStop, ema) or (not na(buySignalLow) and close < buySignalLow)
+        "LOW_BELOW" => ta.crossover(xATRTrailingStop, ema) or (not na(buySignalLow) and low < buySignalLow)
+        => ta.crossover(xATRTrailingStop, ema)  // Default case
+    
+    // Reset buySignalLow after selling
+    if sell
+        buySignalLow := na
+        
     [buy, sell]
 
-calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useEma200=false, useEma50Cross200=false) =>
-    [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200)
-    profit = backtest.profit(backtestDateStart, backtestDateEnd, buy, sell)
-    [buy, sell, profit]
+calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, useRSI, useStochastic, useFrama, useEma200=false, useEma50Cross200=false, sellSignalType="ATR_CROSS") =>
+    [buy, sell] = calculateBuySellSignal(src, xATRTrailingStop, useRSI, useStochastic, useEma200, useEma50Cross200, useFrama, sellSignalType)
+    [profit, winrate] = backtest_profit(backtestDateStart, backtestDateEnd, buy, sell)
+    [buy, sell, profit, winrate]
 
+isBetter(newProfit, newWinrate, bestProfit, bestWinrate, optimizationMetric) =>
+    optimizationMetric == "Profit" ? newProfit > bestProfit : newWinrate > bestWinrate
+
+// ============================= Function declarations ends here =============================
 
 src = close
 xATRTrailingStop = calculateATRTrailingStop(src, atrSensitivity, atrPeriod)
 
-// Calculate and backtest buy sell signals given all combination of useRsi and useStochastic
-[buy, sell, profit] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false)
-[buyStochastic, sellStochastic, profitStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true)
-[buyRSI, sellRSI, profitRSI] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false)
-[buyRSIStochastic, sellRSIStochastic, profitRSIStochastic] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true)
-
 // Placeholders
-bestBuy = buy
-bestSell = sell
-bestProfit = profit
+bool bestBuy = na
+bool bestSell = na
+float bestProfit = -100000
+bestWinrate = 0.0
 bestUseRSI = false
 bestUseStochastic = false
+bestUseFrama = false
 bestUseEma200 = false
 bestUseEma50Cross200 = false
 
-if profitStochastic >= profit and profitStochastic >= profitRSI and profitStochastic >= profitRSIStochastic
-    // log.info("The largest profit was obtained when useRSI was false and useStochastic was true")
-    bestBuy := buyStochastic
-    bestSell := sellStochastic
-    bestProfit := profitStochastic
-    bestUseRSI := false
-    bestUseStochastic := true
+// "ATR_CROSS", "CLOSE_BELOW", "LOW_BELOW"
+// Calculate and backtest buy sell signals given all combination of useRsi and useStochastic
+// buy, sell means today buy or sell signal is generated or not
+// profit means profit made till tioday using the strategy
+// The var keyword in Pine Script retains values across bars, NOT across multiple function calls.
 
-else if profitRSI >= profit and profitRSI >= profitStochastic and profitRSI >= profitRSIStochastic
-    // log.info("The largest profit was obtained when useRSI was true and useStochastic was false")
-    bestBuy := buyRSI
-    bestSell := sellRSI
-    bestProfit := profitRSI
-    bestUseRSI := true
-    bestUseStochastic := false
+// ============================= Best buy sell logic starts here =============================
 
-else if profitRSIStochastic >= profit and profitRSIStochastic >= profitStochastic and profitRSIStochastic >= profitRSI
-    // log.info("The largest profit was obtained when useRSI and useStochastic were both true")
-    bestBuy := buyRSIStochastic
-    bestSell := sellRSIStochastic
-    bestProfit := profitRSIStochastic
-    bestUseRSI := true
-    bestUseStochastic := true
-
-else
-    // log.info("The largest profit was obtained when useRSI and useStochastic were both false")
-    bestBuy := buy
-    bestSell := sell
-    bestProfit := profit
+// Vanilla buy
+sellType = "ATR_CROSS"
+[buyVanillaAtrCross, sellVanillaAtrCross, profitVanillaAtrCross, winrateVanillaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, false, sellSignalType=sellType)
+if isBetter(profitVanillaAtrCross, winrateVanillaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitVanillaAtrCross
+    bestWinrate := winrateVanillaAtrCross
+    bestBuy := buyVanillaAtrCross
+    bestSell := sellVanillaAtrCross
     bestUseRSI := false
     bestUseStochastic := false
+    bestUseFrama := false
+    log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
 
+// Frama buy
+sellType := "ATR_CROSS"
+[buyFramaAtrCross, sellFramaAtrCross, profitFramaAtrCross, winrateFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, false, true, sellSignalType=sellType)
+if isBetter(profitFramaAtrCross, winrateFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitFramaAtrCross
+    bestWinrate := winrateFramaAtrCross
+    bestBuy := buyFramaAtrCross
+    bestSell := sellFramaAtrCross
+    bestUseRSI := false
+    bestUseStochastic := false
+    bestUseFrama := true
+    log.info("The largest profit was obtained when useRSI and useStochastic are false false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(bestWinrate, "#.##"))
+
+// Stochastic buy
+sellType := "ATR_CROSS"
+[buyStochasticAtrCross, sellStochasticAtrCross, profitStochasticAtrCross, winrateStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, false,  sellSignalType=sellType)
+if isBetter(profitStochasticAtrCross, winrateStochasticAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitStochasticAtrCross
+    bestWinrate := winrateStochasticAtrCross
+    bestBuy := buyStochasticAtrCross
+    bestSell := sellStochasticAtrCross
+    bestUseRSI := false
+    bestUseStochastic := true
+    bestUseFrama := false
+    log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+// Stochastic Frama buy
+sellType := "ATR_CROSS"
+[buyStochasticFramaAtrCross, sellStochasticFramaAtrCross, profitStochasticFramaAtrCross, winrateStochasticFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, false, true, true, sellSignalType=sellType)
+if isBetter(profitStochasticFramaAtrCross, winrateStochasticFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitStochasticFramaAtrCross
+    bestWinrate := winrateStochasticFramaAtrCross
+    bestBuy := buyStochasticFramaAtrCross
+    bestSell := sellStochasticFramaAtrCross
+    bestUseRSI := false
+    bestUseStochastic := true
+    bestUseFrama := true
+    log.info("The largest profit was obtained when useRSI and useStochastic are false true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+// RSI buy signal
+sellType := "ATR_CROSS"
+[buyRSIAtrCross, sellRSIAtrCross, profitRSIAtrCross, winrateRSIAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, false, sellSignalType=sellType)
+if isBetter(profitRSIAtrCross, winrateRSIAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitRSIAtrCross
+    bestWinrate := winrateRSIAtrCross
+    bestBuy := buyRSIAtrCross
+    bestSell := sellRSIAtrCross
+    bestUseRSI := true
+    bestUseStochastic := false
+    bestUseFrama := false
+    log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+// RSI Frama buy signal
+sellType := "ATR_CROSS"
+[buyRSIFramaAtrCross, sellRSIFramaAtrCross, profitRSIFramaAtrCross, winrateRSIFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, false, true, sellSignalType=sellType)
+if isBetter(profitRSIFramaAtrCross, winrateRSIFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitRSIFramaAtrCross
+    bestWinrate := winrateRSIFramaAtrCross
+    bestBuy := buyRSIFramaAtrCross
+    bestSell := sellRSIFramaAtrCross
+    bestUseRSI := true
+    bestUseStochastic := false
+    bestUseFrama := true
+    log.info("The largest profit was obtained when useRSI and useStochastic are true false. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateStochasticAtrCross, "#.##"))
+
+// RSIStochastic buy signal
+sellType := "ATR_CROSS"
+[buyRSIStochasticAtrCross, sellRSIStochasticAtrCross, profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, false, sellSignalType=sellType)
+if isBetter(profitRSIStochasticAtrCross, winrateRSIStochasticAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitRSIStochasticAtrCross
+    bestWinrate := winrateRSIStochasticAtrCross
+    bestBuy := buyRSIStochasticAtrCross
+    bestSell := sellRSIStochasticAtrCross
+    bestUseRSI := true
+    bestUseStochastic := true
+    bestUseFrama := false
+    log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
+
+// RSIStochastic Frama buy signal
+sellType := "ATR_CROSS"
+[buyRSIStochasticFramaAtrCross, sellRSIStochasticFramaAtrCross, profitRSIStochasticFramaAtrCross, winrateRSIStochasticFramaAtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, true, true, true, sellSignalType=sellType)
+if isBetter(profitRSIStochasticFramaAtrCross, winrateRSIStochasticFramaAtrCross, bestProfit, bestWinrate, optimizationMetric)
+    bestProfit := profitRSIStochasticFramaAtrCross
+    bestWinrate := winrateRSIStochasticFramaAtrCross
+    bestBuy := buyRSIStochasticFramaAtrCross
+    bestSell := sellRSIStochasticFramaAtrCross
+    bestUseRSI := true
+    bestUseStochastic := true
+    bestUseFrama := true
+    log.info("The largest profit was obtained when useRSI and useStochastic are true true. bestProfit, bestBuy, bestSell, sellType, winrate: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateRSIStochasticAtrCross, "#.##"))
+
+// LowRiskEntry buy signal
 useEma50Cross200 = lowRiskEntry
-[buyEma50Cross200, sellEma50Cross200, profitEma50Cross200] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseEma200, useEma50Cross200)
+if useEma50Cross200
+    sellType := "ATR_CROSS"
+    [buyEma50Cross200AtrCross, sellEma50Cross200AtrCross, profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross] = calculateAndBacktestBuySellSignal(src, xATRTrailingStop, backtestDateStart, backtestDateEnd, bestUseRSI, bestUseStochastic, bestUseFrama, bestUseEma200, useEma50Cross200, sellSignalType=sellType)
+    
+    if isBetter(profitEma50Cross200AtrCross, winrateEma50Cross200AtrCross, bestProfit, bestWinrate, optimizationMetric)
+        bestBuy := buyEma50Cross200AtrCross
+        bestSell := sellEma50Cross200AtrCross
+        bestProfit := profitEma50Cross200AtrCross
+        bestWinrate := winrateEma50Cross200AtrCross
+        bestUseEma50Cross200 := true
+        log.info("bestProfit, bestBuy, bestSell, sellType, winrateEma50Cross200: {0}, {1}, {2}, {3}, {4}", str.tostring(bestProfit, "#.##"), str.tostring(bestBuy),  str.tostring(bestSell), sellType, str.tostring(winrateEma50Cross200AtrCross, "#.##"))
 
-if profitEma50Cross200 > bestProfit
-    // log.info("The largest profit was obtained with EMA 50 cross 200 filter")
-    bestBuy := buyEma50Cross200
-    bestSell := sellEma50Cross200
-    bestProfit := profitEma50Cross200
-    bestUseEma50Cross200 := true
 
+// ============================= Best buy sell logic ends here =============================
 
 // Add alerts
 alertcondition(bestBuy, title="UTBot Stochastic RSI Buy  Signal", message="UTBot Stochastic RSI Buy Signal")
@@ -501,3 +777,4 @@ if showCheckpoints
         lossesCheckpoint3 := losses - lossesCheckpoint1 - lossesCheckpoint2
     
     f_checkpoint_table(profitPercCheckpoint1, profitPercCheckpoint2, profitPercCheckpoint3, winsCheckpoint1, winsCheckpoint2, winsCheckpoint3, lossesCheckpoint1, lossesCheckpoint2, lossesCheckpoint3, stockGrowthCheckpoint1, stockGrowthCheckpoint2, stockGrowthCheckpoint3)
+
