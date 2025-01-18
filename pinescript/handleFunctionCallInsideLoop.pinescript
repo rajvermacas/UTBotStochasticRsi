@@ -42,6 +42,7 @@ if array.size(results) == 0  // Initialize only once
     for signalType in buySignalTypes
         value = getSignalValue(signalType)
         array.push(results, value)
+        log.info("SignalType: {0}, Value: {1}", signalType, str.tostring(value))
 
 // Plot results for verification
 plot(array.get(results, 0), "ATR_CROSS Result", color.blue)
