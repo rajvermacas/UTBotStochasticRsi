@@ -33,8 +33,6 @@ series float price = hl2 // Use hl2 as the default source
 var float Filt   = na
 var float Filt1  = na
 var float Filt2  = na
-var int   count1 = na
-var int   count2 = na
 // }
 
 // UDTs----------------------------------------------------------------------------------------------------------------{
@@ -105,7 +103,6 @@ Filt  := ta.sma((bar_index < N + 1) ? price : Filt, 5) // Apply SMA for smoothin
 // Calculate the channel bands
 Filt1 := Filt + volatility * distance
 Filt2 := Filt - volatility * distance
-// }
 
 
 // ＰＬＯＴ-------------------------------------------------------------------------------------------------------------{
@@ -137,35 +134,6 @@ size = switch labl_size
     "Small"  => size.small
     "Normal" => size.normal
     "Large"  => size.large
-
-// Add labels on breakout events
-if break_up
-    count2 := 0
-    count1 += 1 
-    if count1 == 1
-        label.new(
-                  x         = bar_index,
-                  y         = Filt2, 
-                  text      = "🢁\n" + str.tostring(p_vol),
-                  style     = label.style_label_up,
-                  textcolor = color1, 
-                  color     = color(na), 
-                  size = size
-                  )
-
-if break_dn
-    count1 := 0 
-    count2 += 1
-    if count2 == 1
-        label.new(
-                  x         = bar_index,
-                  y         = Filt1, 
-                  text      = str.tostring(p_vol) + "\n🢃",
-                  style     = label.style_label_down,
-                  textcolor = color2, 
-                  color     = color(na), 
-                  size      = size
-                  )
 
 // Plot candles with the calculated colors
 plotcandle(
